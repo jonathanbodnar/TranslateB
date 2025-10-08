@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { motion, AnimatePresence, PanInfo } from 'framer-motion';
+import { motion, PanInfo } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ChevronRight } from 'lucide-react';
-import { QuizQuestion, QuizSessionAnswer, PersonalityBuckets } from '../types';
+import { QuizQuestion, QuizSessionAnswer, PersonalityBuckets, SwipeDirection } from '../types';
 
 const PersonalityQuiz: React.FC = () => {
   const navigate = useNavigate();
@@ -32,6 +32,24 @@ const PersonalityQuiz: React.FC = () => {
           text: 'Focus on how the other person might feel',
           bucketWeights: { feeling: 8, intuition: 1, sensing: 1, thinking: 0 },
           direction: 'left'
+        },
+        {
+          id: '1c',
+          text: 'Take time to process before responding',
+          bucketWeights: { sensing: 3, thinking: 3, feeling: 2, intuition: 2 },
+          direction: 'up'
+        },
+        {
+          id: '1d',
+          text: 'I usually avoid difficult conversations',
+          bucketWeights: { feeling: 4, sensing: 3, intuition: 2, thinking: 1 },
+          direction: 'up'
+        },
+        {
+          id: '1e',
+          text: 'I prefer direct, honest communication',
+          bucketWeights: { thinking: 5, sensing: 3, feeling: 2, intuition: 0 },
+          direction: 'up'
         }
       ]
     },
@@ -52,6 +70,24 @@ const PersonalityQuiz: React.FC = () => {
           text: 'Clear communication and shared goals',
           bucketWeights: { thinking: 5, sensing: 4, feeling: 1, intuition: 0 },
           direction: 'left'
+        },
+        {
+          id: '2c',
+          text: 'Having fun and enjoying time together',
+          bucketWeights: { feeling: 3, sensing: 3, intuition: 2, thinking: 2 },
+          direction: 'up'
+        },
+        {
+          id: '2d',
+          text: 'Relationships are complicated for me',
+          bucketWeights: { intuition: 4, feeling: 3, thinking: 2, sensing: 1 },
+          direction: 'up'
+        },
+        {
+          id: '2e',
+          text: 'Mutual respect and trust above all',
+          bucketWeights: { thinking: 4, feeling: 3, sensing: 2, intuition: 1 },
+          direction: 'up'
         }
       ]
     },
@@ -99,14 +135,43 @@ const PersonalityQuiz: React.FC = () => {
 
   const currentQuestion = questions[currentQuestionIndex];
 
-  const handleSwipe = (info: PanInfo, answerId: string) => {
-    const threshold = 100;
-    const velocity = info.velocity.x;
+  const handleSwipe = (info: PanInfo) => {
+    const threshold = 80;
+    const velocityX = info.velocity.x;
+    const velocityY = info.velocity.y;
+    const offsetX = info.offset.x;
     
-    if (Math.abs(velocity) > threshold) {
-      const selectedAnswer = currentQuestion.answers.find(a => a.id === answerId);
-      if (!selectedAnswer) return;
+    // Determine swipe direction based on velocity and offset
+    let selectedAnswer: any = null;
 
+    // Check for strong horizontal swipes first
+    if (Math.abs(velocityX) > threshold && Math.abs(velocityX) > Math.abs(velocityY)) {
+      if (velocityX > 0) {
+        selectedAnswer = currentQuestion.answers.find(a => a.direction === 'right');
+      } else {
+        selectedAnswer = currentQuestion.answers.find(a => a.direction === 'left');
+      }
+    }
+    // Check for upward swipes
+    else if (velocityY < -threshold) {
+      // Get all up direction answers and cycle through them based on swipe angle
+      const upAnswers = currentQuestion.answers.filter(a => a.direction === 'up');
+      if (upAnswers.length > 0) {
+        // Determine which neutral option based on horizontal offset
+        let answerIndex = 0;
+        if (offsetX < -50 && upAnswers.length > 1) {
+          answerIndex = 1; // up-left neutral disagree
+        } else if (offsetX > 50 && upAnswers.length > 2) {
+          answerIndex = 2; // up-right neutral agree
+        } else {
+          answerIndex = 0; // straight up neutral
+        }
+        
+        selectedAnswer = upAnswers[answerIndex] || upAnswers[0];
+      }
+    }
+
+    if (selectedAnswer) {
       // Record the answer
       const newAnswer: QuizSessionAnswer = {
         questionId: currentQuestion.id,
@@ -289,34 +354,25 @@ const PersonalityQuiz: React.FC = () => {
 
           {/* Swipeable Answer Cards */}
           <div className="relative h-80 mb-8" ref={constraintsRef}>
-            <AnimatePresence>
-              {currentQuestion.answers.map((answer, index) => (
-                <motion.div
-                  key={answer.id}
-                  className="swipe-card glass-card p-6 flex items-center justify-center"
-                  drag="x"
-                  dragConstraints={constraintsRef}
-                  onDragEnd={(_, info) => handleSwipe(info, answer.id)}
-                  initial={{ 
-                    x: index === 0 ? 0 : 50,
-                    opacity: index === 0 ? 1 : 0.7,
-                    scale: index === 0 ? 1 : 0.95,
-                    zIndex: currentQuestion.answers.length - index
-                  }}
-                  animate={{ 
-                    x: index === 0 ? 0 : 50,
-                    opacity: index === 0 ? 1 : 0.7,
-                    scale: index === 0 ? 1 : 0.95
-                  }}
-                  whileDrag={{ scale: 1.05, rotate: 5 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                >
-                  <p className="text-white text-center text-lg leading-relaxed">
-                    {answer.text}
-                  </p>
-                </motion.div>
-              ))}
-            </AnimatePresence>
+            <motion.div
+              className="swipe-card glass-card p-6 flex items-center justify-center"
+              drag
+              dragConstraints={constraintsRef}
+              onDragEnd={(_, info) => handleSwipe(info)}
+              whileDrag={{ scale: 1.05, rotate: 2 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            >
+              <div className="text-center">
+                <p className="text-white text-lg font-medium mb-4">
+                  {currentQuestion.text}
+                </p>
+                <div className="text-white/60 text-sm">
+                  <p>← {currentQuestion.answers.find(a => a.direction === 'left')?.text.substring(0, 30)}...</p>
+                  <p>→ {currentQuestion.answers.find(a => a.direction === 'right')?.text.substring(0, 30)}...</p>
+                  <p>↑ Neutral options available</p>
+                </div>
+              </div>
+            </motion.div>
           </div>
 
           {/* Swipe Instructions */}
@@ -326,17 +382,30 @@ const PersonalityQuiz: React.FC = () => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
           >
-            <p className="text-white/60 text-sm mb-2">
-              Swipe left or right to choose
+            <p className="text-white/60 text-sm mb-4">
+              Swipe in any direction to choose
             </p>
-            <div className="flex justify-center space-x-8">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-white/40 rounded-full" />
-                <span className="text-white/60 text-xs">Left</span>
+            <div className="grid grid-cols-3 gap-4 max-w-xs mx-auto">
+              <div className="text-center">
+                <div className="text-white/40 text-xs">↖</div>
+                <div className="text-white/60 text-xs">Disagree</div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-white rounded-full" />
-                <span className="text-white/60 text-xs">Right</span>
+              <div className="text-center">
+                <div className="text-white/40 text-xs">↑</div>
+                <div className="text-white/60 text-xs">Neutral</div>
+              </div>
+              <div className="text-center">
+                <div className="text-white/40 text-xs">↗</div>
+                <div className="text-white/60 text-xs">Agree</div>
+              </div>
+              <div className="text-center">
+                <div className="text-white/40 text-xs">←</div>
+                <div className="text-white/60 text-xs">Option A</div>
+              </div>
+              <div></div>
+              <div className="text-center">
+                <div className="text-white/40 text-xs">→</div>
+                <div className="text-white/60 text-xs">Option B</div>
               </div>
             </div>
           </motion.div>

@@ -71,7 +71,7 @@ export interface QuizAnswer {
 }
 
 export type QuestionType = 'swipe' | 'multiChoice' | 'slider';
-export type SwipeDirection = 'left' | 'right' | 'up' | 'down';
+export type SwipeDirection = 'left' | 'right' | 'up' | 'down' | 'up-left' | 'up-right';
 
 export interface QuizSession {
   id: string;

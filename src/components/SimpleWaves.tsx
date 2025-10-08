@@ -76,7 +76,7 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       for (let x = 0; x <= width; x += 5) {
         const progress = x / width;
         // Create flowing horizontal waves with gentle curves
-        const baseY = height * 0.8 + waveOffset - i * 150;
+        const baseY = height * 0.3 + waveOffset - i * 150;
         
         // Multiple sine waves for complex glass flow with depth scaling
         const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 25 * depthScale;
@@ -136,7 +136,7 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
         ctx.beginPath();
         for (let x = 0; x <= width; x += 10) {
           const progress = x / width;
-          const baseY = height * 0.8 + waveOffset - i * 150 - 5; // Slightly offset shadow
+          const baseY = height * 0.3 + waveOffset - i * 150 - 5; // Slightly offset shadow
           const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 20 * depthScale;
           const finalY = baseY + wave1;
           
@@ -161,7 +161,7 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       ctx.beginPath();
       for (let x = 0; x <= width; x += 5) {
         const progress = x / width;
-        const baseY = height * 0.8 + waveOffset - i * 150;
+        const baseY = height * 0.3 + waveOffset - i * 150;
         const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 25;
         const wave2 = Math.sin(progress * Math.PI * 3 + timeRef.current * waveSpeed * 0.7) * 15;
         const wave3 = Math.sin(progress * Math.PI * 0.8 + timeRef.current * waveSpeed * 1.3) * 10;

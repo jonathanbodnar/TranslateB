@@ -31,8 +31,8 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
 
     // Remove debug circle - waves are working!
 
-    // Draw glassy diagonal waves
-    for (let i = 0; i < 4; i++) {
+    // Draw glassy diagonal waves (render back to front for proper layering)
+    for (let i = 3; i >= 0; i--) { // Reverse order: 3=back, 0=front
       ctx.save();
       ctx.globalAlpha = 1.0; // Completely opaque - no transparency
 
@@ -70,13 +70,13 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       // Create flowing glass sheet effect with depth
       const waveOffset = i * 200; // Much more vertical spacing between waves
       const waveSpeed = 0.3 + i * 0.15; // Different speeds for each wave
-      const depthScale = 1 - (i * 0.1); // Layers get smaller as they go back
+      const depthScale = 1 - ((3 - i) * 0.1); // i=0 is front (closest), i=3 is back (furthest)
       
       // Draw top edge of glass sheet (more horizontal flow)
       for (let x = 0; x <= width; x += 5) {
         const progress = x / width;
         // Create flowing horizontal waves with gentle curves
-        const baseY = height * 0.3 + waveOffset - i * 150;
+        const baseY = height * 0.4 + waveOffset - i * 150; // Start 10% lower
         
         // Multiple sine waves for complex glass flow with depth scaling
         const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 25 * depthScale;
@@ -123,8 +123,8 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       // Add realistic glass lighting effects
       ctx.restore();
 
-      // Glass depth shadow (cast by layer above)
-      if (i > 0) {
+      // Glass depth shadow (cast by layer above) - only for back layers
+      if (i < 3) { // i=3 is furthest back, no shadow needed
         ctx.save();
         ctx.globalAlpha = 0.1;
         ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
@@ -136,7 +136,7 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
         ctx.beginPath();
         for (let x = 0; x <= width; x += 10) {
           const progress = x / width;
-          const baseY = height * 0.3 + waveOffset - i * 150 - 5; // Slightly offset shadow
+          const baseY = height * 0.4 + waveOffset - i * 150 - 5; // Slightly offset shadow, 10% lower
           const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 20 * depthScale;
           const finalY = baseY + wave1;
           
@@ -155,14 +155,14 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       const highlightOpacity = 0.8 * Math.pow(depthScale, 2); // Much stronger fade for back layers
       ctx.globalAlpha = highlightOpacity;
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-      ctx.lineWidth = 2 + (3 - i) * 0.8; // Thicker highlights on front layers (reverse index)
+      ctx.lineWidth = 2 + i * 0.8; // Thicker highlights on front layers (i=0 is front)
       ctx.shadowColor = 'rgba(255, 255, 255, 0.7)';
       ctx.shadowBlur = 4;
       
       ctx.beginPath();
       for (let x = 0; x <= width; x += 5) {
         const progress = x / width;
-        const baseY = height * 0.3 + waveOffset - i * 150;
+        const baseY = height * 0.4 + waveOffset - i * 150; // Start 10% lower
         const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 25;
         const wave2 = Math.sin(progress * Math.PI * 3 + timeRef.current * waveSpeed * 0.7) * 15;
         const wave3 = Math.sin(progress * Math.PI * 0.8 + timeRef.current * waveSpeed * 1.3) * 10;
@@ -182,9 +182,9 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       const shadowOpacity = 0.2 * Math.pow(depthScale, 1.5); // Fade shadows for back layers
       ctx.globalAlpha = shadowOpacity;
       ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-      ctx.lineWidth = 1.5 + (3 - i) * 0.5; // Thicker shadows on front layers
+      ctx.lineWidth = 1.5 + i * 0.5; // Thicker shadows on front layers (i=0 is front)
       ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-      ctx.shadowBlur = 4 + (3 - i);
+      ctx.shadowBlur = 4 + i;
       
       ctx.beginPath();
       for (let x = 0; x <= width; x += 5) {
@@ -214,12 +214,12 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       innerGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
       
       ctx.strokeStyle = innerGradient;
-      ctx.lineWidth = 1 + (3 - i) * 0.3; // Thicker inner reflections on front layers
+      ctx.lineWidth = 1 + i * 0.3; // Thicker inner reflections on front layers (i=0 is front)
       
       ctx.beginPath();
       for (let x = 0; x <= width; x += 8) {
         const progress = x / width;
-        const baseY = height * 0.3 + waveOffset + (sheetThickness * 0.3) - i * 150;
+        const baseY = height * 0.4 + waveOffset + (sheetThickness * 0.3) - i * 150; // 10% lower
         const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 20;
         const wave2 = Math.sin(progress * Math.PI * 3 + timeRef.current * waveSpeed * 0.7) * 12;
         const finalY = baseY + wave1 + wave2;

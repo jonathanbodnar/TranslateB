@@ -14,6 +14,7 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
   const timeRef = useRef(0);
+  const mouseRef = useRef({ x: 0, y: 0, influence: 0 });
   const [isClient, setIsClient] = useState(false);
 
   const animate = () => {
@@ -28,55 +29,125 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
 
     timeRef.current += 0.02;
 
-    // Debug: Draw a very visible moving circle to test animation
-    ctx.fillStyle = 'rgba(255, 255, 0, 0.5)'; // Bright yellow
-    const circleX = 50 + Math.sin(timeRef.current) * 30;
-    const circleY = 50 + Math.cos(timeRef.current) * 20;
-    ctx.beginPath();
-    ctx.arc(circleX, circleY, 10, 0, Math.PI * 2);
-    ctx.fill();
+    // Remove debug circle - waves are working!
 
-    // Draw simple animated waves  
-    for (let i = 0; i < 3; i++) {
+    // Draw glassy diagonal waves
+    for (let i = 0; i < 4; i++) {
       ctx.save();
-      ctx.globalAlpha = 0.2 + i * 0.05; // Much more visible for testing
+      ctx.globalAlpha = 0.04 + i * 0.01; // Very subtle glass opacity
 
-      // Create diagonal gradient
-      const gradient = ctx.createLinearGradient(0, height, width, 0);
+      // Create multi-stop glass gradients
+      // Create more horizontal gradient (gentler angle)
+      const gradient = ctx.createLinearGradient(0, height, width, height * 0.3);
       
       if (i === 0) {
-        gradient.addColorStop(0, 'rgba(147, 51, 234, 0.3)');
-        gradient.addColorStop(1, 'rgba(147, 51, 234, 0)');
+        // Purple glass
+        gradient.addColorStop(0, 'rgba(147, 51, 234, 0.8)');
+        gradient.addColorStop(0.3, 'rgba(168, 85, 247, 0.4)');
+        gradient.addColorStop(0.7, 'rgba(196, 181, 253, 0.2)');
+        gradient.addColorStop(1, 'rgba(221, 214, 254, 0)');
       } else if (i === 1) {
-        gradient.addColorStop(0, 'rgba(239, 68, 68, 0.25)');
-        gradient.addColorStop(1, 'rgba(239, 68, 68, 0)');
+        // Red-pink glass
+        gradient.addColorStop(0, 'rgba(239, 68, 68, 0.7)');
+        gradient.addColorStop(0.3, 'rgba(248, 113, 113, 0.35)');
+        gradient.addColorStop(0.7, 'rgba(252, 165, 165, 0.15)');
+        gradient.addColorStop(1, 'rgba(254, 202, 202, 0)');
+      } else if (i === 2) {
+        // Blue glass
+        gradient.addColorStop(0, 'rgba(59, 130, 246, 0.6)');
+        gradient.addColorStop(0.3, 'rgba(96, 165, 250, 0.3)');
+        gradient.addColorStop(0.7, 'rgba(147, 197, 253, 0.12)');
+        gradient.addColorStop(1, 'rgba(191, 219, 254, 0)');
       } else {
-        gradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
-        gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+        // Light purple glass
+        gradient.addColorStop(0, 'rgba(168, 85, 247, 0.5)');
+        gradient.addColorStop(0.3, 'rgba(196, 181, 253, 0.25)');
+        gradient.addColorStop(0.7, 'rgba(221, 214, 254, 0.1)');
+        gradient.addColorStop(1, 'rgba(237, 233, 254, 0)');
       }
 
       ctx.fillStyle = gradient;
 
-      // Draw diagonal wave
+      // Create smooth glass wave bands
       ctx.beginPath();
-      ctx.moveTo(0, height);
-
-      for (let x = 0; x <= width; x += 10) {
+      
+      // Create flowing glass sheet effect
+      const waveOffset = i * 150; // Offset each wave
+      const waveSpeed = 0.5 + i * 0.2; // Different speeds for each wave
+      
+      // Draw top edge of glass sheet (more horizontal flow)
+      for (let x = 0; x <= width; x += 5) {
         const progress = x / width;
-        const baseY = height - (progress * height);
-        const waveY = baseY + Math.sin(progress * Math.PI * 2 + timeRef.current + i) * (30 + i * 10);
-        ctx.lineTo(x, waveY);
+        // Much gentler slope - only drop 20% of height instead of 100%
+        const baseY = height - (progress * height * 0.2) + waveOffset - height * 0.3;
+        
+        // Multiple sine waves for complex glass flow
+        const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 25;
+        const wave2 = Math.sin(progress * Math.PI * 3 + timeRef.current * waveSpeed * 0.7) * 15;
+        const wave3 = Math.sin(progress * Math.PI * 0.8 + timeRef.current * waveSpeed * 1.3) * 10;
+        
+        // Add subtle mouse influence
+        const mouse = mouseRef.current;
+        const mouseDistance = Math.sqrt(Math.pow(x - mouse.x, 2) + Math.pow(baseY - mouse.y, 2));
+        const mouseInfluence = mouse.influence * Math.exp(-mouseDistance / 200) * 15;
+        
+        const finalY = baseY + wave1 + wave2 + wave3 + mouseInfluence;
+        
+        if (x === 0) {
+          ctx.moveTo(x, finalY);
+        } else {
+          ctx.lineTo(x, finalY);
+        }
       }
-
-      ctx.lineTo(width, height);
-      ctx.lineTo(0, height);
+      
+      // Draw bottom edge of glass sheet (parallel but offset)
+      const sheetThickness = 40 + i * 15;
+      for (let x = width; x >= 0; x -= 5) {
+        const progress = x / width;
+        // Same gentler slope for bottom edge
+        const baseY = height - (progress * height * 0.2) + waveOffset + sheetThickness - height * 0.3;
+        
+        const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 25;
+        const wave2 = Math.sin(progress * Math.PI * 3 + timeRef.current * waveSpeed * 0.7) * 15;
+        const wave3 = Math.sin(progress * Math.PI * 0.8 + timeRef.current * waveSpeed * 1.3) * 10;
+        
+        // Add subtle mouse influence for bottom edge too
+        const mouse = mouseRef.current;
+        const mouseDistance = Math.sqrt(Math.pow(x - mouse.x, 2) + Math.pow(baseY - mouse.y, 2));
+        const mouseInfluence = mouse.influence * Math.exp(-mouseDistance / 200) * 15;
+        
+        const finalY = baseY + wave1 + wave2 + wave3 + mouseInfluence;
+        ctx.lineTo(x, finalY);
+      }
+      
       ctx.closePath();
       ctx.fill();
+
+      // Add glass highlight effect
+      ctx.globalAlpha = 0.02;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
 
       ctx.restore();
     }
 
+    // Update mouse influence
+    mouseRef.current.influence *= 0.95; // Fade out over time
+    
     animationRef.current = requestAnimationFrame(animate);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    mouseRef.current = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+      influence: Math.min(mouseRef.current.influence + 0.2, 1)
+    };
   };
 
   useEffect(() => {
@@ -93,6 +164,7 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
         cancelAnimationFrame(animationRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClient, width, height]);
 
   if (!isClient) {
@@ -105,10 +177,12 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       width={width}
       height={height}
       className={className}
+      onMouseMove={handleMouseMove}
       style={{ 
         background: 'transparent',
-        mixBlendMode: 'normal',
-        opacity: 1
+        mixBlendMode: 'screen',
+        opacity: 0.7,
+        filter: 'blur(0.5px)'
       }}
     />
   );

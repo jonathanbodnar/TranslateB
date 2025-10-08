@@ -52,7 +52,7 @@ const LandingPage: React.FC = () => {
     >
       {/* Subtle Gradient Waves */}
       <motion.div 
-        className="absolute inset-0 pointer-events-none"
+        className="absolute inset-0 pointer-events-auto"
         variants={itemVariants}
       >
         <SimpleWaves 

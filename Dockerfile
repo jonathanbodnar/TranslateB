@@ -16,11 +16,8 @@ COPY . .
 # Build the React app for production
 RUN npm run build
 
-# Install serve to run the application
-RUN npm install -g serve
-
 # Expose the port the app runs on
 EXPOSE $PORT
 
 # Define the command to run the application
-CMD ["sh", "-c", "serve -s build -p $PORT"]
+CMD ["node", "server.js"]

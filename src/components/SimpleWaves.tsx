@@ -34,7 +34,7 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
     // Draw glassy diagonal waves
     for (let i = 0; i < 4; i++) {
       ctx.save();
-      ctx.globalAlpha = 0.04 + i * 0.01; // Very subtle glass opacity
+      ctx.globalAlpha = 0.02 + i * 0.005; // Even more subtle base glass
 
       // Create multi-stop glass gradients
       // Create more horizontal gradient (gentler angle)
@@ -123,12 +123,84 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       ctx.closePath();
       ctx.fill();
 
-      // Add glass highlight effect
-      ctx.globalAlpha = 0.02;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
+      // Add realistic glass lighting effects
+      ctx.restore();
 
+      // Top edge highlight (light reflection)
+      ctx.save();
+      ctx.globalAlpha = 0.4;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+      ctx.shadowBlur = 3;
+      
+      ctx.beginPath();
+      for (let x = 0; x <= width; x += 5) {
+        const progress = x / width;
+        const baseY = height - (progress * height * 0.2) + waveOffset - height * 0.3;
+        const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 25;
+        const wave2 = Math.sin(progress * Math.PI * 3 + timeRef.current * waveSpeed * 0.7) * 15;
+        const wave3 = Math.sin(progress * Math.PI * 0.8 + timeRef.current * waveSpeed * 1.3) * 10;
+        const mouse = mouseRef.current;
+        const mouseDistance = Math.sqrt(Math.pow(x - mouse.x, 2) + Math.pow(baseY - mouse.y, 2));
+        const mouseInfluence = mouse.influence * Math.exp(-mouseDistance / 200) * 15;
+        const finalY = baseY + wave1 + wave2 + wave3 + mouseInfluence;
+        
+        if (x === 0) ctx.moveTo(x, finalY);
+        else ctx.lineTo(x, finalY);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      // Bottom edge shadow (glass depth)
+      ctx.save();
+      ctx.globalAlpha = 0.15;
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+      ctx.lineWidth = 1.5;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+      ctx.shadowBlur = 4;
+      
+      ctx.beginPath();
+      for (let x = 0; x <= width; x += 5) {
+        const progress = x / width;
+        const baseY = height - (progress * height * 0.2) + waveOffset + sheetThickness - height * 0.3;
+        const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 25;
+        const wave2 = Math.sin(progress * Math.PI * 3 + timeRef.current * waveSpeed * 0.7) * 15;
+        const wave3 = Math.sin(progress * Math.PI * 0.8 + timeRef.current * waveSpeed * 1.3) * 10;
+        const mouse = mouseRef.current;
+        const mouseDistance = Math.sqrt(Math.pow(x - mouse.x, 2) + Math.pow(baseY - mouse.y, 2));
+        const mouseInfluence = mouse.influence * Math.exp(-mouseDistance / 200) * 15;
+        const finalY = baseY + wave1 + wave2 + wave3 + mouseInfluence;
+        
+        if (x === 0) ctx.moveTo(x, finalY);
+        else ctx.lineTo(x, finalY);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      // Inner glass reflection (creates depth illusion)
+      ctx.save();
+      ctx.globalAlpha = 0.08;
+      const innerGradient = ctx.createLinearGradient(0, height, width, height * 0.3);
+      innerGradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+      innerGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
+      innerGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      
+      ctx.strokeStyle = innerGradient;
+      ctx.lineWidth = 1;
+      
+      ctx.beginPath();
+      for (let x = 0; x <= width; x += 8) {
+        const progress = x / width;
+        const baseY = height - (progress * height * 0.2) + waveOffset + (sheetThickness * 0.3) - height * 0.3;
+        const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 20;
+        const wave2 = Math.sin(progress * Math.PI * 3 + timeRef.current * waveSpeed * 0.7) * 12;
+        const finalY = baseY + wave1 + wave2;
+        
+        if (x === 0) ctx.moveTo(x, finalY);
+        else ctx.lineTo(x, finalY);
+      }
+      ctx.stroke();
       ctx.restore();
     }
 
@@ -180,9 +252,10 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       onMouseMove={handleMouseMove}
       style={{ 
         background: 'transparent',
-        mixBlendMode: 'screen',
-        opacity: 0.7,
-        filter: 'blur(0.5px)'
+        mixBlendMode: 'overlay',
+        opacity: 0.8,
+        filter: 'blur(0.3px)',
+        backdropFilter: 'blur(1px)'
       }}
     />
   );

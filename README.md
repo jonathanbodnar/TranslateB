@@ -58,6 +58,24 @@ npm run build
 
 This builds the app for production to the `build` folder and optimizes it for best performance.
 
+### Deployment
+
+#### Railway Deployment (Recommended)
+
+1. Push your code to GitHub
+2. Connect your repository to Railway at [railway.app](https://railway.app)
+3. Railway will automatically detect and deploy your React app
+4. See [RAILWAY_DEPLOYMENT.md](RAILWAY_DEPLOYMENT.md) for detailed instructions
+
+#### Manual Deployment
+
+```bash
+npm run build
+npm run serve
+```
+
+The app will be served on the port specified by the `PORT` environment variable.
+
 ## PWA Features
 
 The app is configured as a Progressive Web App with:

@@ -48,7 +48,7 @@ const GradientWaves: React.FC<GradientWavesProps> = ({
         phase: 0,
         speed: 0.008,
         offset: 0, // Will be used differently for diagonal waves
-        opacity: 0.06
+        opacity: 0.15
       },
       {
         amplitude: 60,
@@ -56,7 +56,7 @@ const GradientWaves: React.FC<GradientWavesProps> = ({
         phase: Math.PI / 4,
         speed: 0.006,
         offset: 100,
-        opacity: 0.05
+        opacity: 0.12
       },
       {
         amplitude: 70,
@@ -64,15 +64,7 @@ const GradientWaves: React.FC<GradientWavesProps> = ({
         phase: Math.PI / 2,
         speed: 0.007,
         offset: 200,
-        opacity: 0.04
-      },
-      {
-        amplitude: 90,
-        frequency: 0.0025,
-        phase: Math.PI / 6,
-        speed: 0.009,
-        offset: 300,
-        opacity: 0.03
+        opacity: 0.1
       }
     ];
   }, [height]);
@@ -131,6 +123,10 @@ const GradientWaves: React.FC<GradientWavesProps> = ({
 
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
+
+    // Debug: Add visible test to confirm canvas is working
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.fillRect(0, 0, width, 20);
 
     const mouse = mouseRef.current;
 

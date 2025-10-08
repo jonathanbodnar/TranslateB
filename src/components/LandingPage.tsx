@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { MessageCircle, Brain, Users, Sparkles } from 'lucide-react';
-import GradientWaves from './GradientWaves';
+import SimpleWaves from './SimpleWaves';
 import { useWindowSize } from '../hooks/useWindowSize';
 
 const LandingPage: React.FC = () => {
@@ -55,7 +55,7 @@ const LandingPage: React.FC = () => {
         className="absolute inset-0 pointer-events-none"
         variants={itemVariants}
       >
-        <GradientWaves 
+        <SimpleWaves 
           width={width}
           height={height}
           className="absolute inset-0"

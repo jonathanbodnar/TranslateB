@@ -28,10 +28,18 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
 
     timeRef.current += 0.02;
 
-    // Draw simple animated waves
+    // Debug: Draw a very visible moving circle to test animation
+    ctx.fillStyle = 'rgba(255, 255, 0, 0.5)'; // Bright yellow
+    const circleX = 50 + Math.sin(timeRef.current) * 30;
+    const circleY = 50 + Math.cos(timeRef.current) * 20;
+    ctx.beginPath();
+    ctx.arc(circleX, circleY, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw simple animated waves  
     for (let i = 0; i < 3; i++) {
       ctx.save();
-      ctx.globalAlpha = 0.1 + i * 0.02;
+      ctx.globalAlpha = 0.2 + i * 0.05; // Much more visible for testing
 
       // Create diagonal gradient
       const gradient = ctx.createLinearGradient(0, height, width, 0);

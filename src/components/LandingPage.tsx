@@ -71,11 +71,11 @@ const LandingPage: React.FC = () => {
           className="heading-primary mb-4"
           variants={itemVariants}
         >
-          Easy communication
-          <br />
           <span className="bg-gradient-to-r from-pink-300 to-blue-300 bg-clip-text text-transparent">
-            with AI.
+            Easier communication
           </span>
+          <br />
+          through deeper understanding.
         </motion.h1>
 
         <motion.p 

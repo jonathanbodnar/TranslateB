@@ -1,13 +1,28 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { MessageCircle, Brain, Users, Sparkles } from 'lucide-react';
-import ParticleField from './ParticleField';
+import GradientWaves from './GradientWaves';
 import { useWindowSize } from '../hooks/useWindowSize';
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const { width, height } = useWindowSize();
+
+  // Create ripple effect when menu items are clicked
+  const handleMenuClick = useCallback((path: string, event: React.MouseEvent) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    
+    // Create ripple at menu item center
+    if ((window as any).createWaveRipple) {
+      (window as any).createWaveRipple(x, y);
+    }
+    
+    // Small delay to show ripple before navigation
+    setTimeout(() => navigate(path), 150);
+  }, [navigate]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -35,15 +50,14 @@ const LandingPage: React.FC = () => {
       initial="hidden"
       animate="visible"
     >
-      {/* Interactive Particle Field */}
+      {/* Subtle Gradient Waves */}
       <motion.div 
-        className="absolute inset-0 pointer-events-auto"
+        className="absolute inset-0 pointer-events-none"
         variants={itemVariants}
       >
-        <ParticleField 
+        <GradientWaves 
           width={width}
           height={height}
-          particleCount={12}
           className="absolute inset-0"
         />
       </motion.div>
@@ -76,7 +90,7 @@ const LandingPage: React.FC = () => {
         <motion.button
           className="glass-button px-8 py-4 text-lg font-semibold mb-8 w-full max-w-xs"
           variants={itemVariants}
-          onClick={() => navigate('/translator')}
+          onClick={(e) => handleMenuClick('/translator', e)}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
@@ -92,7 +106,7 @@ const LandingPage: React.FC = () => {
         <motion.div 
           className="glass-card p-4 text-center cursor-pointer"
           whileHover={{ scale: 1.05 }}
-          onClick={() => navigate('/translator')}
+          onClick={(e) => handleMenuClick('/translator', e)}
         >
           <MessageCircle className="w-8 h-8 text-white mx-auto mb-2" />
           <h3 className="text-white font-semibold text-sm mb-1">Quick Translator</h3>
@@ -102,7 +116,7 @@ const LandingPage: React.FC = () => {
         <motion.div 
           className="glass-card p-4 text-center cursor-pointer"
           whileHover={{ scale: 1.05 }}
-          onClick={() => navigate('/quiz')}
+          onClick={(e) => handleMenuClick('/quiz', e)}
         >
           <Brain className="w-8 h-8 text-white mx-auto mb-2" />
           <h3 className="text-white font-semibold text-sm mb-1">Personality Quiz</h3>
@@ -112,7 +126,7 @@ const LandingPage: React.FC = () => {
         <motion.div 
           className="glass-card p-4 text-center cursor-pointer"
           whileHover={{ scale: 1.05 }}
-          onClick={() => navigate('/relationships')}
+          onClick={(e) => handleMenuClick('/relationships', e)}
         >
           <Users className="w-8 h-8 text-white mx-auto mb-2" />
           <h3 className="text-white font-semibold text-sm mb-1">Relationship Web</h3>
@@ -122,7 +136,7 @@ const LandingPage: React.FC = () => {
         <motion.div 
           className="glass-card p-4 text-center cursor-pointer"
           whileHover={{ scale: 1.05 }}
-          onClick={() => navigate('/profile')}
+          onClick={(e) => handleMenuClick('/profile', e)}
         >
           <Sparkles className="w-8 h-8 text-white mx-auto mb-2" />
           <h3 className="text-white font-semibold text-sm mb-1">Your Profile</h3>

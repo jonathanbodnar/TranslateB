@@ -150,11 +150,12 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
         ctx.restore();
       }
 
-      // Top edge highlight (light reflection)
+      // Top edge highlight (light reflection) - opacity decreases with depth
       ctx.save();
-      ctx.globalAlpha = 0.6 * depthScale; // Brighter highlights on front layers
+      const highlightOpacity = 0.8 * Math.pow(depthScale, 2); // Much stronger fade for back layers
+      ctx.globalAlpha = highlightOpacity;
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-      ctx.lineWidth = 2 + i * 0.5; // Thicker highlights on front layers
+      ctx.lineWidth = 2 + (3 - i) * 0.8; // Thicker highlights on front layers (reverse index)
       ctx.shadowColor = 'rgba(255, 255, 255, 0.7)';
       ctx.shadowBlur = 4;
       
@@ -176,13 +177,14 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       ctx.stroke();
       ctx.restore();
 
-      // Bottom edge shadow (glass depth)
+      // Bottom edge shadow (glass depth) - opacity decreases with depth
       ctx.save();
-      ctx.globalAlpha = 0.15;
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-      ctx.lineWidth = 1.5;
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-      ctx.shadowBlur = 4;
+      const shadowOpacity = 0.2 * Math.pow(depthScale, 1.5); // Fade shadows for back layers
+      ctx.globalAlpha = shadowOpacity;
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.lineWidth = 1.5 + (3 - i) * 0.5; // Thicker shadows on front layers
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+      ctx.shadowBlur = 4 + (3 - i);
       
       ctx.beginPath();
       for (let x = 0; x <= width; x += 5) {
@@ -202,21 +204,22 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       ctx.stroke();
       ctx.restore();
 
-      // Inner glass reflection (creates depth illusion)
+      // Inner glass reflection (creates depth illusion) - fades with depth
       ctx.save();
-      ctx.globalAlpha = 0.08;
+      const innerOpacity = 0.12 * Math.pow(depthScale, 1.8); // Strong fade for back layers
+      ctx.globalAlpha = innerOpacity;
       const innerGradient = ctx.createLinearGradient(0, height, width, height * 0.3);
-      innerGradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
-      innerGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
+      innerGradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+      innerGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.15)');
       innerGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
       
       ctx.strokeStyle = innerGradient;
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1 + (3 - i) * 0.3; // Thicker inner reflections on front layers
       
       ctx.beginPath();
       for (let x = 0; x <= width; x += 8) {
         const progress = x / width;
-        const baseY = height * 0.6 + waveOffset + (sheetThickness * 0.3) - i * 80;
+        const baseY = height * 0.3 + waveOffset + (sheetThickness * 0.3) - i * 150;
         const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 20;
         const wave2 = Math.sin(progress * Math.PI * 3 + timeRef.current * waveSpeed * 0.7) * 12;
         const finalY = baseY + wave1 + wave2;

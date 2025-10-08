@@ -48,7 +48,7 @@ const GradientWaves: React.FC<GradientWavesProps> = ({
         phase: 0,
         speed: 0.003,
         offset: height * 0.3,
-        opacity: 0.03
+        opacity: 0.08
       },
       {
         amplitude: 25,
@@ -56,7 +56,7 @@ const GradientWaves: React.FC<GradientWavesProps> = ({
         phase: Math.PI / 3,
         speed: 0.002,
         offset: height * 0.5,
-        opacity: 0.025
+        opacity: 0.06
       },
       {
         amplitude: 35,
@@ -64,7 +64,7 @@ const GradientWaves: React.FC<GradientWavesProps> = ({
         phase: Math.PI / 2,
         speed: 0.004,
         offset: height * 0.7,
-        opacity: 0.02
+        opacity: 0.05
       },
       {
         amplitude: 20,
@@ -72,7 +72,7 @@ const GradientWaves: React.FC<GradientWavesProps> = ({
         phase: Math.PI,
         speed: 0.0025,
         offset: height * 0.4,
-        opacity: 0.015
+        opacity: 0.04
       }
     ];
   }, [height]);
@@ -294,7 +294,7 @@ const GradientWaves: React.FC<GradientWavesProps> = ({
       style={{ 
         background: 'transparent',
         mixBlendMode: 'normal',
-        opacity: 0.6
+        opacity: 1
       }}
     />
   );

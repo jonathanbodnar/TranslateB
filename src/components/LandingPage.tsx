@@ -43,7 +43,7 @@ const LandingPage: React.FC = () => {
         <ParticleField 
           width={width}
           height={height}
-          particleCount={60}
+          particleCount={12}
           className="absolute inset-0"
         />
       </motion.div>

@@ -23,7 +23,7 @@ interface ParticleFieldProps {
 const ParticleField: React.FC<ParticleFieldProps> = ({
   width = 800,
   height = 600,
-  particleCount = 50,
+  particleCount = 15,
   className = ''
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -32,38 +32,59 @@ const ParticleField: React.FC<ParticleFieldProps> = ({
   const mouseRef = useRef({ x: 0, y: 0, isMoving: false });
   const [isClient, setIsClient] = useState(false);
 
-  // Initialize particles
+  // Initialize particles (start with empty array)
   const initializeParticles = () => {
-    particlesRef.current = Array.from({ length: particleCount }, (_, i) => ({
-      id: i,
-      x: Math.random() * width,
-      y: Math.random() * height,
-      vx: (Math.random() - 0.5) * 0.5,
-      vy: (Math.random() - 0.5) * 0.5,
-      size: Math.random() * 3 + 1,
-      opacity: Math.random() * 0.5 + 0.1,
-      targetOpacity: Math.random() * 0.5 + 0.1,
-      life: Math.random() * 100,
-      maxLife: Math.random() * 200 + 100
-    }));
+    particlesRef.current = [];
   };
 
-  // Create particle burst on click
+  // Create subtle particles near mouse
+  const createMouseParticles = (x: number, y: number) => {
+    // Only create particles if mouse is moving
+    if (!mouseRef.current.isMoving) return;
+    
+    // Limit total particles
+    if (particlesRef.current.length >= particleCount) return;
+    
+    // Create 1-2 subtle particles near mouse
+    const numParticles = Math.random() < 0.3 ? 1 : 0; // 30% chance
+    
+    for (let i = 0; i < numParticles; i++) {
+      const offsetX = (Math.random() - 0.5) * 40; // Small spread around mouse
+      const offsetY = (Math.random() - 0.5) * 40;
+      
+      const particle: Particle = {
+        id: Date.now() + Math.random(),
+        x: x + offsetX,
+        y: y + offsetY,
+        vx: (Math.random() - 0.5) * 0.2,
+        vy: (Math.random() - 0.5) * 0.2,
+        size: Math.random() * 2 + 0.5,
+        opacity: 0,
+        targetOpacity: Math.random() * 0.3 + 0.1, // Very subtle
+        life: 0,
+        maxLife: Math.random() * 120 + 80
+      };
+      
+      particlesRef.current.push(particle);
+    }
+  };
+
+  // Create particle burst on click (smaller and more subtle)
   const createBurst = (x: number, y: number) => {
-    const burstParticles: Particle[] = Array.from({ length: 15 }, (_, i) => {
-      const angle = (Math.PI * 2 * i) / 15;
-      const speed = Math.random() * 3 + 2;
+    const burstParticles: Particle[] = Array.from({ length: 8 }, (_, i) => {
+      const angle = (Math.PI * 2 * i) / 8;
+      const speed = Math.random() * 1.5 + 1;
       return {
         id: particlesRef.current.length + i,
         x,
         y,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
-        size: Math.random() * 4 + 2,
-        opacity: 1,
+        size: Math.random() * 2 + 1,
+        opacity: 0.8,
         targetOpacity: 0,
         life: 0,
-        maxLife: 60
+        maxLife: 40
       };
     });
 
@@ -74,27 +95,18 @@ const ParticleField: React.FC<ParticleFieldProps> = ({
   const updateParticles = () => {
     const mouse = mouseRef.current;
     
+    // Create new particles near mouse when moving
+    if (mouse.isMoving) {
+      createMouseParticles(mouse.x, mouse.y);
+    }
+    
     particlesRef.current = particlesRef.current.filter(particle => {
       // Update position
       particle.x += particle.vx;
       particle.y += particle.vy;
 
-      // Mouse interaction
-      if (mouse.isMoving) {
-        const dx = mouse.x - particle.x;
-        const dy = mouse.y - particle.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        if (distance < 100) {
-          const force = (100 - distance) / 100;
-          particle.vx += dx * force * 0.001;
-          particle.vy += dy * force * 0.001;
-          particle.targetOpacity = Math.min(1, particle.targetOpacity + force * 0.5);
-        }
-      }
-
       // Fade in/out
-      const fadeSpeed = 0.02;
+      const fadeSpeed = 0.03;
       if (particle.opacity < particle.targetOpacity) {
         particle.opacity = Math.min(particle.targetOpacity, particle.opacity + fadeSpeed);
       } else if (particle.opacity > particle.targetOpacity) {
@@ -105,39 +117,17 @@ const ParticleField: React.FC<ParticleFieldProps> = ({
       particle.life++;
       
       // Fade out near end of life
-      if (particle.life > particle.maxLife * 0.8) {
+      if (particle.life > particle.maxLife * 0.7) {
         particle.targetOpacity = 0;
       }
 
-      // Boundary wrapping
-      if (particle.x < 0) particle.x = width;
-      if (particle.x > width) particle.x = 0;
-      if (particle.y < 0) particle.y = height;
-      if (particle.y > height) particle.y = 0;
-
       // Apply friction
-      particle.vx *= 0.99;
-      particle.vy *= 0.99;
+      particle.vx *= 0.98;
+      particle.vy *= 0.98;
 
       // Remove dead particles
       return particle.life < particle.maxLife && particle.opacity > 0.01;
     });
-
-    // Add new particles if needed
-    while (particlesRef.current.length < particleCount) {
-      particlesRef.current.push({
-        id: Date.now() + Math.random(),
-        x: Math.random() * width,
-        y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
-        size: Math.random() * 3 + 1,
-        opacity: 0,
-        targetOpacity: Math.random() * 0.5 + 0.1,
-        life: 0,
-        maxLife: Math.random() * 200 + 100
-      });
-    }
   };
 
   // Render particles
@@ -156,24 +146,24 @@ const ParticleField: React.FC<ParticleFieldProps> = ({
       ctx.save();
       ctx.globalAlpha = particle.opacity;
       
-      // Create radial gradient for glow effect
+      // Create subtle radial gradient for glow effect
       const gradient = ctx.createRadialGradient(
         particle.x, particle.y, 0,
-        particle.x, particle.y, particle.size * 3
+        particle.x, particle.y, particle.size * 2
       );
-      gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-      gradient.addColorStop(0.3, 'rgba(147, 197, 253, 0.8)');
+      gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+      gradient.addColorStop(0.5, 'rgba(147, 197, 253, 0.4)');
       gradient.addColorStop(1, 'rgba(147, 197, 253, 0)');
 
       ctx.fillStyle = gradient;
       ctx.beginPath();
-      ctx.arc(particle.x, particle.y, particle.size * 3, 0, Math.PI * 2);
+      ctx.arc(particle.x, particle.y, particle.size * 2, 0, Math.PI * 2);
       ctx.fill();
 
-      // Draw core
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      // Draw subtle core
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
       ctx.beginPath();
-      ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+      ctx.arc(particle.x, particle.y, particle.size * 0.5, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.restore();
@@ -202,7 +192,7 @@ const ParticleField: React.FC<ParticleFieldProps> = ({
     // Reset moving flag after a delay
     setTimeout(() => {
       mouseRef.current.isMoving = false;
-    }, 100);
+    }, 150);
   };
 
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {

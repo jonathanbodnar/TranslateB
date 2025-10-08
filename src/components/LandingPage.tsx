@@ -133,6 +133,19 @@ const LandingPage: React.FC = () => {
           <div className="w-2 h-2 bg-white rounded-full opacity-50" />
         </div>
       </motion.div>
+
+      {/* Hidden Admin Access */}
+      <motion.div 
+        className="absolute bottom-2 right-4"
+        variants={itemVariants}
+      >
+        <button
+          onClick={() => navigate('/admin')}
+          className="text-white/30 hover:text-white/60 text-xs transition-colors"
+        >
+          Admin
+        </button>
+      </motion.div>
     </motion.div>
   );
 };

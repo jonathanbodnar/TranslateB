@@ -150,14 +150,14 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
         ctx.restore();
       }
 
-      // Top edge highlight (light reflection) - opacity decreases with depth
+      // Top edge highlight (subtle glass reflection) - opacity decreases with depth
       ctx.save();
-      const highlightOpacity = 0.8 * Math.pow(depthScale, 2); // Much stronger fade for back layers
+      const highlightOpacity = 0.3 * Math.pow(depthScale, 2); // Much more subtle highlights
       ctx.globalAlpha = highlightOpacity;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-      ctx.lineWidth = 2 + i * 0.8; // Thicker highlights on front layers (i=0 is front)
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.7)';
-      ctx.shadowBlur = 4;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.lineWidth = 1 + i * 0.3; // Thinner, more refined highlights
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.2)';
+      ctx.shadowBlur = 2;
       
       ctx.beginPath();
       for (let x = 0; x <= width; x += 5) {
@@ -177,14 +177,14 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       ctx.stroke();
       ctx.restore();
 
-      // Bottom edge shadow (glass depth) - opacity decreases with depth
+      // Bottom edge shadow (subtle glass depth) - opacity decreases with depth
       ctx.save();
-      const shadowOpacity = 0.2 * Math.pow(depthScale, 1.5); // Fade shadows for back layers
+      const shadowOpacity = 0.08 * Math.pow(depthScale, 1.5); // Much more subtle shadows
       ctx.globalAlpha = shadowOpacity;
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-      ctx.lineWidth = 1.5 + i * 0.5; // Thicker shadows on front layers (i=0 is front)
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-      ctx.shadowBlur = 4 + i;
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.lineWidth = 0.8 + i * 0.2; // Thinner, more refined shadows
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+      ctx.shadowBlur = 2 + i * 0.5;
       
       ctx.beginPath();
       for (let x = 0; x <= width; x += 5) {
@@ -204,17 +204,17 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       ctx.stroke();
       ctx.restore();
 
-      // Inner glass reflection (creates depth illusion) - fades with depth
+      // Inner glass reflection (subtle depth illusion) - fades with depth
       ctx.save();
-      const innerOpacity = 0.12 * Math.pow(depthScale, 1.8); // Strong fade for back layers
+      const innerOpacity = 0.05 * Math.pow(depthScale, 1.8); // Very subtle inner reflections
       ctx.globalAlpha = innerOpacity;
       const innerGradient = ctx.createLinearGradient(0, height, width, height * 0.3);
-      innerGradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
-      innerGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.15)');
+      innerGradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+      innerGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
       innerGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
       
       ctx.strokeStyle = innerGradient;
-      ctx.lineWidth = 1 + i * 0.3; // Thicker inner reflections on front layers (i=0 is front)
+      ctx.lineWidth = 0.5 + i * 0.2; // Thinner, more subtle inner reflections
       
       ctx.beginPath();
       for (let x = 0; x <= width; x += 8) {

@@ -12,7 +12,6 @@
     "@types/react-dom": "^19.2.1",
     "@types/react-router-dom": "^5.3.3",
     "autoprefixer": "^10.4.21",
-    "express": "^5.1.0",
     "framer-motion": "^12.23.22",
     "lucide-react": "^0.545.0",
     "postcss": "^8.5.6",
@@ -30,9 +29,9 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "serve": "node server.js",
+    "serve": "serve build --host 0.0.0.0 --port $PORT --single",
     "railway:build": "npm run build",
-    "railway:start": "node server.js"
+    "railway:start": "serve build --host 0.0.0.0 --port $PORT --single"
   },
   "eslintConfig": {
     "extends": [

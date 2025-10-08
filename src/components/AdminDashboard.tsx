@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Settings, Users, BarChart, Edit, Save, Plus, Trash2 } from 'lucide-react';
-import { QuizQuestion, QuizTemplate, PersonalityBuckets } from '../types';
+import { ArrowLeft, Users, BarChart, Edit, Save, Plus, Trash2 } from 'lucide-react';
+import { QuizQuestion, QuizTemplate } from '../types';
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();

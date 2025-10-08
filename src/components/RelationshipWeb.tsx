@@ -10,7 +10,7 @@ const RelationshipWeb: React.FC = () => {
   const [selectedRelationship, setSelectedRelationship] = useState<Relationship | null>(null);
   
   // Mock relationships data
-  const [relationships, setRelationships] = useState<Relationship[]>([
+  const [relationships] = useState<Relationship[]>([
     {
       id: '1',
       name: 'Sarah',

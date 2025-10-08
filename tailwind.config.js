@@ -12,12 +12,6 @@ module.exports = {
           600: '#764ba2',
         }
       },
-      backgroundImage: {
-        'gradient-primary': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        'gradient-secondary': 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-        'gradient-tertiary': 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-        'gradient-quaternary': 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-      },
       backdropBlur: {
         xs: '2px',
       },

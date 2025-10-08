@@ -34,7 +34,7 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
     // Draw glassy diagonal waves
     for (let i = 0; i < 4; i++) {
       ctx.save();
-      ctx.globalAlpha = 0.02 + i * 0.005; // Even more subtle base glass
+      ctx.globalAlpha = 0.15 + i * 0.05; // Opaque glass layers
 
       // Create multi-stop glass gradients
       // Create more horizontal gradient (gentler angle)
@@ -72,7 +72,7 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       ctx.beginPath();
       
       // Create flowing glass sheet effect with depth
-      const waveOffset = i * 60; // Closer layers for more depth
+      const waveOffset = i * 120; // Spread waves out more
       const waveSpeed = 0.3 + i * 0.15; // Different speeds for each wave
       const depthScale = 1 - (i * 0.1); // Layers get smaller as they go back
       
@@ -80,7 +80,7 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       for (let x = 0; x <= width; x += 5) {
         const progress = x / width;
         // Create flowing horizontal waves with gentle curves
-        const baseY = height * 0.6 + waveOffset - i * 80;
+        const baseY = height * 0.7 + waveOffset - i * 100;
         
         // Multiple sine waves for complex glass flow with depth scaling
         const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 25 * depthScale;
@@ -165,7 +165,7 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       ctx.beginPath();
       for (let x = 0; x <= width; x += 5) {
         const progress = x / width;
-        const baseY = height * 0.6 + waveOffset - i * 80;
+        const baseY = height * 0.7 + waveOffset - i * 100;
         const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 25;
         const wave2 = Math.sin(progress * Math.PI * 3 + timeRef.current * waveSpeed * 0.7) * 15;
         const wave3 = Math.sin(progress * Math.PI * 0.8 + timeRef.current * waveSpeed * 1.3) * 10;
@@ -280,9 +280,9 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       onMouseMove={handleMouseMove}
       style={{ 
         background: 'transparent',
-        mixBlendMode: 'overlay',
-        opacity: 0.8,
-        filter: 'blur(0.3px)',
+        mixBlendMode: 'normal',
+        opacity: 0.6,
+        filter: 'blur(0.5px)',
         backdropFilter: 'blur(1px)'
       }}
     />

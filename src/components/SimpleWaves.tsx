@@ -71,20 +71,21 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       // Create smooth glass wave bands
       ctx.beginPath();
       
-      // Create flowing glass sheet effect
-      const waveOffset = i * 150; // Offset each wave
-      const waveSpeed = 0.5 + i * 0.2; // Different speeds for each wave
+      // Create flowing glass sheet effect with depth
+      const waveOffset = i * 60; // Closer layers for more depth
+      const waveSpeed = 0.3 + i * 0.15; // Different speeds for each wave
+      const depthScale = 1 - (i * 0.1); // Layers get smaller as they go back
       
       // Draw top edge of glass sheet (more horizontal flow)
       for (let x = 0; x <= width; x += 5) {
         const progress = x / width;
-        // Much gentler slope - only drop 20% of height instead of 100%
-        const baseY = height - (progress * height * 0.2) + waveOffset - height * 0.3;
+        // Create flowing horizontal waves with gentle curves
+        const baseY = height * 0.6 + waveOffset - i * 80;
         
-        // Multiple sine waves for complex glass flow
-        const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 25;
-        const wave2 = Math.sin(progress * Math.PI * 3 + timeRef.current * waveSpeed * 0.7) * 15;
-        const wave3 = Math.sin(progress * Math.PI * 0.8 + timeRef.current * waveSpeed * 1.3) * 10;
+        // Multiple sine waves for complex glass flow with depth scaling
+        const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 25 * depthScale;
+        const wave2 = Math.sin(progress * Math.PI * 3 + timeRef.current * waveSpeed * 0.7) * 15 * depthScale;
+        const wave3 = Math.sin(progress * Math.PI * 0.8 + timeRef.current * waveSpeed * 1.3) * 10 * depthScale;
         
         // Add subtle mouse influence
         const mouse = mouseRef.current;
@@ -101,11 +102,11 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       }
       
       // Draw bottom edge of glass sheet (parallel but offset)
-      const sheetThickness = 40 + i * 15;
+      const sheetThickness = (40 + i * 15) * depthScale; // Thickness scales with depth
       for (let x = width; x >= 0; x -= 5) {
         const progress = x / width;
-        // Same gentler slope for bottom edge
-        const baseY = height - (progress * height * 0.2) + waveOffset + sheetThickness - height * 0.3;
+        // Bottom edge with depth offset
+        const baseY = height * 0.6 + waveOffset + sheetThickness - i * 80;
         
         const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 25;
         const wave2 = Math.sin(progress * Math.PI * 3 + timeRef.current * waveSpeed * 0.7) * 15;
@@ -126,18 +127,45 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       // Add realistic glass lighting effects
       ctx.restore();
 
+      // Glass depth shadow (cast by layer above)
+      if (i > 0) {
+        ctx.save();
+        ctx.globalAlpha = 0.1;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetX = 3;
+        ctx.shadowOffsetY = 3;
+        
+        ctx.beginPath();
+        for (let x = 0; x <= width; x += 10) {
+          const progress = x / width;
+          const baseY = height * 0.6 + waveOffset - i * 80 - 5; // Slightly offset shadow
+          const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 20 * depthScale;
+          const finalY = baseY + wave1;
+          
+          if (x === 0) ctx.moveTo(x, finalY);
+          else ctx.lineTo(x, finalY);
+        }
+        ctx.lineTo(width, height);
+        ctx.lineTo(0, height);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
       // Top edge highlight (light reflection)
       ctx.save();
-      ctx.globalAlpha = 0.4;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-      ctx.lineWidth = 2;
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
-      ctx.shadowBlur = 3;
+      ctx.globalAlpha = 0.6 * depthScale; // Brighter highlights on front layers
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.lineWidth = 2 + i * 0.5; // Thicker highlights on front layers
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.7)';
+      ctx.shadowBlur = 4;
       
       ctx.beginPath();
       for (let x = 0; x <= width; x += 5) {
         const progress = x / width;
-        const baseY = height - (progress * height * 0.2) + waveOffset - height * 0.3;
+        const baseY = height * 0.6 + waveOffset - i * 80;
         const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 25;
         const wave2 = Math.sin(progress * Math.PI * 3 + timeRef.current * waveSpeed * 0.7) * 15;
         const wave3 = Math.sin(progress * Math.PI * 0.8 + timeRef.current * waveSpeed * 1.3) * 10;
@@ -163,7 +191,7 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       ctx.beginPath();
       for (let x = 0; x <= width; x += 5) {
         const progress = x / width;
-        const baseY = height - (progress * height * 0.2) + waveOffset + sheetThickness - height * 0.3;
+        const baseY = height * 0.6 + waveOffset + sheetThickness - i * 80;
         const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 25;
         const wave2 = Math.sin(progress * Math.PI * 3 + timeRef.current * waveSpeed * 0.7) * 15;
         const wave3 = Math.sin(progress * Math.PI * 0.8 + timeRef.current * waveSpeed * 1.3) * 10;
@@ -192,7 +220,7 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       ctx.beginPath();
       for (let x = 0; x <= width; x += 8) {
         const progress = x / width;
-        const baseY = height - (progress * height * 0.2) + waveOffset + (sheetThickness * 0.3) - height * 0.3;
+        const baseY = height * 0.6 + waveOffset + (sheetThickness * 0.3) - i * 80;
         const wave1 = Math.sin(progress * Math.PI * 1.5 + timeRef.current * waveSpeed) * 20;
         const wave2 = Math.sin(progress * Math.PI * 3 + timeRef.current * waveSpeed * 0.7) * 12;
         const finalY = baseY + wave1 + wave2;

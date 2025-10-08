@@ -39,32 +39,40 @@ const GradientWaves: React.FC<GradientWavesProps> = ({
   const timeRef = useRef(0);
   const [isClient, setIsClient] = useState(false);
 
-  // Initialize waves
+  // Initialize diagonal glass waves
   const initializeWaves = useCallback(() => {
     wavesRef.current = [
       {
-        amplitude: 60,
-        frequency: 0.01,
+        amplitude: 80,
+        frequency: 0.003,
         phase: 0,
-        speed: 0.02,
-        offset: height * 0.8,
-        opacity: 0.15
+        speed: 0.008,
+        offset: 0, // Will be used differently for diagonal waves
+        opacity: 0.06
       },
       {
-        amplitude: 40,
-        frequency: 0.015,
-        phase: Math.PI / 3,
-        speed: 0.015,
-        offset: height * 0.6,
-        opacity: 0.12
+        amplitude: 60,
+        frequency: 0.004,
+        phase: Math.PI / 4,
+        speed: 0.006,
+        offset: 100,
+        opacity: 0.05
       },
       {
-        amplitude: 50,
-        frequency: 0.008,
+        amplitude: 70,
+        frequency: 0.0035,
         phase: Math.PI / 2,
-        speed: 0.025,
-        offset: height * 0.4,
-        opacity: 0.1
+        speed: 0.007,
+        offset: 200,
+        opacity: 0.04
+      },
+      {
+        amplitude: 90,
+        frequency: 0.0025,
+        phase: Math.PI / 6,
+        speed: 0.009,
+        offset: 300,
+        opacity: 0.03
       }
     ];
   }, [height]);
@@ -124,72 +132,103 @@ const GradientWaves: React.FC<GradientWavesProps> = ({
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
 
-    // Debug: Add a simple test shape to verify canvas is working
-    ctx.fillStyle = 'rgba(255, 0, 0, 0.1)';
-    ctx.fillRect(10, 10, 50, 50);
-
     const mouse = mouseRef.current;
 
-    // Render waves
+    // Render diagonal glass waves
     wavesRef.current.forEach((wave, waveIndex) => {
       ctx.save();
       ctx.globalAlpha = wave.opacity;
 
-      // Create gradient for the wave
-      const gradient = ctx.createLinearGradient(0, 0, 0, height);
-      
-      // Different color schemes for each wave
-      const colors = [
-        ['rgba(147, 197, 253, 0.8)', 'rgba(59, 130, 246, 0.4)', 'rgba(29, 78, 216, 0.1)'],
-        ['rgba(196, 181, 253, 0.6)', 'rgba(139, 92, 246, 0.3)', 'rgba(109, 40, 217, 0.1)'],
-        ['rgba(167, 243, 208, 0.5)', 'rgba(34, 197, 94, 0.25)', 'rgba(21, 128, 61, 0.1)'],
-        ['rgba(253, 186, 116, 0.4)', 'rgba(251, 146, 60, 0.2)', 'rgba(234, 88, 12, 0.1)']
+      // Glass-like gradient colors (purple/red/blue hues)
+      const glassColors = [
+        ['rgba(147, 51, 234, 0.4)', 'rgba(168, 85, 247, 0.2)', 'rgba(196, 181, 253, 0.05)'], // Purple
+        ['rgba(239, 68, 68, 0.35)', 'rgba(248, 113, 113, 0.18)', 'rgba(252, 165, 165, 0.04)'], // Red
+        ['rgba(59, 130, 246, 0.3)', 'rgba(96, 165, 250, 0.15)', 'rgba(147, 197, 253, 0.03)'], // Blue
+        ['rgba(168, 85, 247, 0.25)', 'rgba(196, 181, 253, 0.12)', 'rgba(221, 214, 254, 0.02)']  // Light Purple
       ];
 
-      const waveColors = colors[waveIndex % colors.length];
+      // Create diagonal gradient (bottom-left to top-right)
+      const gradient = ctx.createLinearGradient(0, height, width, 0);
+      const waveColors = glassColors[waveIndex % glassColors.length];
       gradient.addColorStop(0, waveColors[0]);
       gradient.addColorStop(0.5, waveColors[1]);
       gradient.addColorStop(1, waveColors[2]);
 
       ctx.fillStyle = gradient;
 
-      // Begin wave path
+      // Create diagonal wave path
       ctx.beginPath();
+      
+      // Start from bottom-left
       ctx.moveTo(0, height);
-
-      // Draw wave with mouse influence
-      for (let x = 0; x <= width; x += 2) {
-        const mouseDistance = Math.sqrt(
-          Math.pow(x - mouse.x, 2) + Math.pow(wave.offset - mouse.y, 2)
+      
+      // Create diagonal wave flowing from bottom-left to top-right
+      const points: [number, number][] = [];
+      
+      for (let progress = 0; progress <= 1; progress += 0.01) {
+        // Base diagonal line from bottom-left to top-right
+        const baseX = progress * width;
+        const baseY = height - (progress * height);
+        
+        // Add wave distortion
+        const waveDistortion = wave.amplitude * Math.sin(
+          progress * Math.PI * 4 * wave.frequency + 
+          wave.phase + 
+          timeRef.current * wave.speed
         );
         
-        // Mouse influence decreases with distance
-        const mouseInfluence = mouse.influence * Math.exp(-mouseDistance / 150);
+        // Add mouse influence
+        const mouseDistance = Math.sqrt(
+          Math.pow(baseX - mouse.x, 2) + Math.pow(baseY - mouse.y, 2)
+        );
+        const mouseInfluence = mouse.influence * Math.exp(-mouseDistance / 200) * 30;
         
-        // Calculate wave height with mouse influence
-        let y = wave.offset + 
-          wave.amplitude * Math.sin(x * wave.frequency + wave.phase) +
-          mouseInfluence * 20 * Math.sin(x * 0.02 + timeRef.current * 0.1);
-
         // Add ripple influences
+        let rippleInfluence = 0;
         ripplesRef.current.forEach(ripple => {
           const rippleDistance = Math.sqrt(
-            Math.pow(x - ripple.x, 2) + Math.pow(y - ripple.y, 2)
+            Math.pow(baseX - ripple.x, 2) + Math.pow(baseY - ripple.y, 2)
           );
           
           if (rippleDistance < ripple.radius) {
-            const rippleInfluence = ripple.opacity * 
-              Math.sin((rippleDistance / ripple.radius) * Math.PI) * 15;
-            y += rippleInfluence;
+            rippleInfluence += ripple.opacity * 
+              Math.sin((rippleDistance / ripple.radius) * Math.PI) * 25;
           }
         });
-
-        ctx.lineTo(x, y);
+        
+        // Calculate final position with all influences
+        const finalX = baseX + (waveDistortion + mouseInfluence + rippleInfluence) * Math.cos(Math.PI / 4);
+        const finalY = baseY + (waveDistortion + mouseInfluence + rippleInfluence) * Math.sin(Math.PI / 4);
+        
+        points.push([finalX, finalY]);
       }
-
-      // Close the path
-      ctx.lineTo(width, height);
-      ctx.lineTo(0, height);
+      
+      // Draw the wave path
+      points.forEach(([x, y], index) => {
+        if (index === 0) {
+          ctx.lineTo(x, y);
+        } else {
+          // Use quadratic curves for smoother waves
+          const prevPoint = points[index - 1];
+          const cpX = (prevPoint[0] + x) / 2;
+          const cpY = (prevPoint[1] + y) / 2;
+          ctx.quadraticCurveTo(prevPoint[0], prevPoint[1], cpX, cpY);
+        }
+      });
+      
+      // Create a band effect by drawing both sides of the wave
+      const bandWidth = 40 + wave.offset / 10;
+      
+      // Draw the other side of the band
+      for (let i = points.length - 1; i >= 0; i--) {
+        const [x, y] = points[i];
+        const normalX = -Math.sin(Math.PI / 4);
+        const normalY = Math.cos(Math.PI / 4);
+        const bandX = x + normalX * bandWidth;
+        const bandY = y + normalY * bandWidth;
+        ctx.lineTo(bandX, bandY);
+      }
+      
       ctx.closePath();
       ctx.fill();
 
@@ -289,8 +328,8 @@ const GradientWaves: React.FC<GradientWavesProps> = ({
       onClick={handleClick}
       style={{ 
         background: 'transparent',
-        mixBlendMode: 'normal',
-        opacity: 1
+        mixBlendMode: 'multiply',
+        opacity: 0.8
       }}
     />
   );

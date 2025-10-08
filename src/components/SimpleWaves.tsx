@@ -34,36 +34,32 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
     // Draw glassy diagonal waves
     for (let i = 0; i < 4; i++) {
       ctx.save();
-      ctx.globalAlpha = 0.15 + i * 0.05; // Opaque glass layers
+      ctx.globalAlpha = 1.0; // Completely opaque - no transparency
 
       // Create multi-stop glass gradients
       // Create more horizontal gradient (gentler angle)
       const gradient = ctx.createLinearGradient(0, height, width, height * 0.3);
       
       if (i === 0) {
-        // Purple glass
-        gradient.addColorStop(0, 'rgba(147, 51, 234, 0.8)');
-        gradient.addColorStop(0.3, 'rgba(168, 85, 247, 0.4)');
-        gradient.addColorStop(0.7, 'rgba(196, 181, 253, 0.2)');
-        gradient.addColorStop(1, 'rgba(221, 214, 254, 0)');
+        // Purple glass (back layer - most subtle)
+        gradient.addColorStop(0, 'rgba(147, 51, 234, 0.15)');
+        gradient.addColorStop(0.5, 'rgba(168, 85, 247, 0.08)');
+        gradient.addColorStop(1, 'rgba(196, 181, 253, 0.03)');
       } else if (i === 1) {
         // Red-pink glass
-        gradient.addColorStop(0, 'rgba(239, 68, 68, 0.7)');
-        gradient.addColorStop(0.3, 'rgba(248, 113, 113, 0.35)');
-        gradient.addColorStop(0.7, 'rgba(252, 165, 165, 0.15)');
-        gradient.addColorStop(1, 'rgba(254, 202, 202, 0)');
+        gradient.addColorStop(0, 'rgba(239, 68, 68, 0.18)');
+        gradient.addColorStop(0.5, 'rgba(248, 113, 113, 0.1)');
+        gradient.addColorStop(1, 'rgba(252, 165, 165, 0.04)');
       } else if (i === 2) {
         // Blue glass
-        gradient.addColorStop(0, 'rgba(59, 130, 246, 0.6)');
-        gradient.addColorStop(0.3, 'rgba(96, 165, 250, 0.3)');
-        gradient.addColorStop(0.7, 'rgba(147, 197, 253, 0.12)');
-        gradient.addColorStop(1, 'rgba(191, 219, 254, 0)');
+        gradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
+        gradient.addColorStop(0.5, 'rgba(96, 165, 250, 0.12)');
+        gradient.addColorStop(1, 'rgba(147, 197, 253, 0.05)');
       } else {
-        // Light purple glass
-        gradient.addColorStop(0, 'rgba(168, 85, 247, 0.5)');
-        gradient.addColorStop(0.3, 'rgba(196, 181, 253, 0.25)');
-        gradient.addColorStop(0.7, 'rgba(221, 214, 254, 0.1)');
-        gradient.addColorStop(1, 'rgba(237, 233, 254, 0)');
+        // Light purple glass (front layer - most visible)
+        gradient.addColorStop(0, 'rgba(168, 85, 247, 0.25)');
+        gradient.addColorStop(0.5, 'rgba(196, 181, 253, 0.15)');
+        gradient.addColorStop(1, 'rgba(221, 214, 254, 0.06)');
       }
 
       ctx.fillStyle = gradient;

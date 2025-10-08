@@ -83,10 +83,15 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
         const wave2 = Math.sin(progress * Math.PI * 3 + timeRef.current * waveSpeed * 0.7) * 15 * depthScale;
         const wave3 = Math.sin(progress * Math.PI * 0.8 + timeRef.current * waveSpeed * 1.3) * 10 * depthScale;
         
-        // Add subtle mouse influence
+        // Add smooth, broader mouse influence
         const mouse = mouseRef.current;
         const mouseDistance = Math.sqrt(Math.pow(x - mouse.x, 2) + Math.pow(baseY - mouse.y, 2));
-        const mouseInfluence = mouse.influence * Math.exp(-mouseDistance / 200) * 15;
+        
+        // Create smoother, broader ripple effect
+        const rippleRadius = 300; // Much larger influence area
+        const rippleStrength = 40; // Stronger but smoother effect
+        const smoothFalloff = Math.exp(-Math.pow(mouseDistance / rippleRadius, 2)); // Gaussian falloff for smoother transition
+        const mouseInfluence = mouse.influence * smoothFalloff * rippleStrength;
         
         const finalY = baseY + wave1 + wave2 + wave3 + mouseInfluence;
         
@@ -108,10 +113,15 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
         const wave2 = Math.sin(progress * Math.PI * 3 + timeRef.current * waveSpeed * 0.7) * 15;
         const wave3 = Math.sin(progress * Math.PI * 0.8 + timeRef.current * waveSpeed * 1.3) * 10;
         
-        // Add subtle mouse influence for bottom edge too
+        // Add smooth mouse influence for bottom edge too
         const mouse = mouseRef.current;
         const mouseDistance = Math.sqrt(Math.pow(x - mouse.x, 2) + Math.pow(baseY - mouse.y, 2));
-        const mouseInfluence = mouse.influence * Math.exp(-mouseDistance / 200) * 15;
+        
+        // Same smooth ripple effect for bottom edge
+        const rippleRadius = 300;
+        const rippleStrength = 40;
+        const smoothFalloff = Math.exp(-Math.pow(mouseDistance / rippleRadius, 2));
+        const mouseInfluence = mouse.influence * smoothFalloff * rippleStrength;
         
         const finalY = baseY + wave1 + wave2 + wave3 + mouseInfluence;
         ctx.lineTo(x, finalY);
@@ -231,8 +241,8 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
       ctx.restore();
     }
 
-    // Update mouse influence
-    mouseRef.current.influence *= 0.95; // Fade out over time
+    // Update mouse influence (slower fade for smoother effect)
+    mouseRef.current.influence *= 0.98; // Slower fade out for smoother transitions
     
     animationRef.current = requestAnimationFrame(animate);
   };
@@ -245,7 +255,7 @@ const SimpleWaves: React.FC<SimpleWavesProps> = ({
     mouseRef.current = {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
-      influence: Math.min(mouseRef.current.influence + 0.2, 1)
+      influence: Math.min(mouseRef.current.influence + 0.05, 1) // Slower buildup for smoother effect
     };
   };
 

@@ -2,9 +2,12 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { MessageCircle, Brain, Users, Sparkles } from 'lucide-react';
+import ParticleField from './ParticleField';
+import { useWindowSize } from '../hooks/useWindowSize';
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
+  const { width, height } = useWindowSize();
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -32,12 +35,17 @@ const LandingPage: React.FC = () => {
       initial="hidden"
       animate="visible"
     >
-      {/* Floating Orb */}
+      {/* Interactive Particle Field */}
       <motion.div 
-        className="absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 gradient-orb rounded-full floating-orb"
+        className="absolute inset-0 pointer-events-auto"
         variants={itemVariants}
       >
-        <div className="w-full h-full rounded-full bg-gradient-to-br from-white/20 to-transparent shimmering" />
+        <ParticleField 
+          width={width}
+          height={height}
+          particleCount={60}
+          className="absolute inset-0"
+        />
       </motion.div>
 
       {/* Main Content */}

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, User, Heart, Briefcase, Users, Home, Edit3 } from 'lucide-react';
 import { Relationship } from '../types';
+import Constellation, { Rel } from '../features/contacts/components/Constellation';
 
 const RelationshipWeb: React.FC = () => {
   const navigate = useNavigate();
@@ -128,7 +129,7 @@ const RelationshipWeb: React.FC = () => {
       </motion.div>
 
       <div className="px-4 pb-8">
-        {/* Relationship Web Visualization */}
+        {/* Relationship Web Visualization (Cytoscape) */}
         <motion.div 
           className="glass-card p-6 mb-6 h-80"
           initial={{ y: 30, opacity: 0 }}
@@ -136,66 +137,13 @@ const RelationshipWeb: React.FC = () => {
           transition={{ delay: 0.3 }}
         >
           <h3 className="text-white text-lg font-semibold mb-4 text-center">Your Connections</h3>
-          
-          <div className="relative w-full h-60">
-            {/* Center - You */}
-            <motion.div 
-              className="absolute w-16 h-16 bg-gradient-to-br from-white/20 to-white/10 rounded-full flex items-center justify-center border-2 border-white/30"
-              style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.5 }}
-            >
-              <User className="w-8 h-8 text-white" />
-            </motion.div>
-
-            {/* Relationships */}
-            {relationships.map((relationship, index) => {
-              const position = getPositionForIndex(index, relationships.length);
-              
-              return (
-                <motion.div
-                  key={relationship.id}
-                  className={`absolute w-12 h-12 bg-gradient-to-br ${getRelationshipColor(relationship.emotionalCloseness)} rounded-full flex items-center justify-center cursor-pointer`}
-                  style={{ 
-                    left: position.x - 24, 
-                    top: position.y - 24 
-                  }}
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.7 + index * 0.1 }}
-                  whileHover={{ scale: 1.1 }}
-                  onClick={() => setSelectedRelationship(relationship)}
-                >
-                  {getRelationshipIcon(relationship.relationshipType)}
-                  
-                  {/* Connection Line */}
-                  <svg 
-                    className="absolute inset-0 pointer-events-none"
-                    style={{ 
-                      width: '300px', 
-                      height: '300px',
-                      left: '50%',
-                      top: '50%',
-                      transform: 'translate(-50%, -50%)'
-                    }}
-                  >
-                    <motion.line
-                      x1="150"
-                      y1="150"
-                      x2={position.x}
-                      y2={position.y}
-                      stroke="rgba(255,255,255,0.2)"
-                      strokeWidth="1"
-                      initial={{ pathLength: 0 }}
-                      animate={{ pathLength: 1 }}
-                      transition={{ delay: 0.8 + index * 0.1, duration: 0.5 }}
-                    />
-                  </svg>
-                </motion.div>
-              );
-            })}
-          </div>
+          <Constellation
+            relationships={relationships.map(r => ({ id: r.id, name: r.name, relationshipType: r.relationshipType, emotionalCloseness: r.emotionalCloseness }))}
+            onSelect={(rel) => {
+              const found = relationships.find(r => r.id === rel.id);
+              if (found) setSelectedRelationship(found);
+            }}
+          />
         </motion.div>
 
         {/* Relationship List */}

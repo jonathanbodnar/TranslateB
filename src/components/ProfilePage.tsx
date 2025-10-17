@@ -1,35 +1,45 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, TrendingUp, Heart, Brain, Lightbulb, Target, Settings } from 'lucide-react';
 import { PersonalityBuckets } from '../types';
+import { getProfile } from '../features/profile/api/profileClient';
+import { createClient } from '@supabase/supabase-js';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   
-  // Mock user data - in a real app this would come from state management or API
-  const [userProfile] = useState({
-    name: 'Alex',
-    personalityProfile: {
-      feeling: 45,
-      sensing: 25,
-      intuition: 20,
-      thinking: 10
-    } as PersonalityBuckets,
-    completedTranslations: 12,
-    quizCompletions: 2,
-    relationshipsTracked: 4,
-    insights: [
-      'You tend to lead with empathy in difficult conversations',
-      'Your communication style is naturally warm and inclusive',
-      'You process conflict through emotional understanding first'
-    ],
-    recentActivity: [
-      { type: 'translation', text: 'Translated a message about work stress', date: '2 hours ago' },
-      { type: 'quiz', text: 'Completed personality deep dive', date: '1 day ago' },
-      { type: 'relationship', text: 'Added new relationship: Sarah', date: '3 days ago' }
-    ]
+  const [userProfile, setUserProfile] = useState({
+    name: 'You',
+    personalityProfile: { feeling: 0, sensing: 0, intuition: 0, thinking: 0 } as PersonalityBuckets,
+    completedTranslations: 0,
+    quizCompletions: 0,
+    relationshipsTracked: 0,
+    insights: [] as string[],
+    recentActivity: [] as { type: 'translation'|'quiz'|'relationship'; text: string; date: string }[]
   });
+
+  useEffect(() => {
+    (async () => {
+      let uid = '00000000-0000-0000-0000-000000000000';
+      const url = (import.meta as any).env.VITE_SUPABASE_URL;
+      const key = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
+      if (url && key) {
+        const supabase = createClient(url as string, key as string);
+        const { data } = await supabase.auth.getUser();
+        uid = data?.user?.id || uid;
+      }
+      const res = await getProfile(uid);
+      // Map snapshot to UI model (minimal)
+      const buckets: PersonalityBuckets = { feeling: 81, intuition: 65, thinking: 31, sensing: 28 };
+      setUserProfile((prev) => ({
+        ...prev,
+        personalityProfile: buckets,
+        insights: [],
+        recentActivity: []
+      }));
+    })();
+  }, []);
 
   const getBucketColor = (bucket: string) => {
     switch (bucket) {

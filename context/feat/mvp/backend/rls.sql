@@ -67,4 +67,23 @@ create policy shortlinks_public_read on public.shortlinks for select using (true
 create policy shortlinks_owner_write on public.shortlinks
   for all using (created_by = auth.uid()) with check (created_by = auth.uid());
 
+-- Lock down embeddings table (service role/RPC only)
+alter table public.reflection_embeddings enable row level security;
 
+create policy "No selects" on public.reflection_embeddings
+for select using (false);
+
+create policy "No inserts" on public.reflection_embeddings
+for insert with check (false);
+
+create policy "No updates" on public.reflection_embeddings
+for update using (false);
+
+create policy "No deletes" on public.reflection_embeddings
+for delete using (false);
+
+-- User roles: users can only read their own role; writes via service role
+alter table public.user_roles enable row level security;
+
+create policy "User can read own role" on public.user_roles
+for select using (auth.uid() = user_id);

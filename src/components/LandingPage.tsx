@@ -1,13 +1,18 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { MessageCircle, Brain, Users, Sparkles } from 'lucide-react';
 import SimpleWaves from './SimpleWaves';
 import { useWindowSize } from '../hooks/useWindowSize';
+import { track } from '../analytics/tracker';
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const { width, height } = useWindowSize();
+
+  useEffect(() => {
+    track('landing.viewed', { path: '/' });
+  }, []);
 
   // Create ripple effect when menu items are clicked
   const handleMenuClick = useCallback((path: string, event: React.MouseEvent) => {
@@ -21,6 +26,7 @@ const LandingPage: React.FC = () => {
     }
     
     // Small delay to show ripple before navigation
+    track('cta.clicked', { target: path });
     setTimeout(() => navigate(path), 150);
   }, [navigate]);
 

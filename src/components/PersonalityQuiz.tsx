@@ -1,8 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, PanInfo } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ChevronRight } from 'lucide-react';
 import { QuizQuestion, QuizSessionAnswer, PersonalityBuckets, SwipeDirection } from '../types';
+import { answer, complete, getQuestions } from '../features/intake/api/intakeClient';
+import { track } from '../analytics/tracker';
 
 const PersonalityQuiz: React.FC = () => {
   const navigate = useNavigate();
@@ -12,126 +14,31 @@ const PersonalityQuiz: React.FC = () => {
   const [answers, setAnswers] = useState<QuizSessionAnswer[]>([]);
   const [isCompleted, setIsCompleted] = useState(false);
   const [results, setResults] = useState<PersonalityBuckets | null>(null);
+  const q = new URLSearchParams(useLocation().search);
+  const session_id = q.get('session_id') || '';
+  const intake_text = q.get('text') || '';
 
-  // Mock quiz questions based on your sketches
-  const questions: QuizQuestion[] = [
-    {
-      id: '1',
-      text: 'When facing a difficult conversation, I tend to:',
-      variants: ['How do you approach tough talks?'],
-      type: 'swipe',
-      answers: [
-        {
-          id: '1a',
-          text: 'Think through what I want to say logically first',
-          bucketWeights: { thinking: 7, sensing: 2, intuition: 1, feeling: 0 },
-          direction: 'right'
-        },
-        {
-          id: '1b',
-          text: 'Focus on how the other person might feel',
-          bucketWeights: { feeling: 8, intuition: 1, sensing: 1, thinking: 0 },
-          direction: 'left'
-        },
-        {
-          id: '1c',
-          text: 'Take time to process before responding',
-          bucketWeights: { sensing: 3, thinking: 3, feeling: 2, intuition: 2 },
-          direction: 'up'
-        },
-        {
-          id: '1d',
-          text: 'I usually avoid difficult conversations',
-          bucketWeights: { feeling: 4, sensing: 3, intuition: 2, thinking: 1 },
-          direction: 'up'
-        },
-        {
-          id: '1e',
-          text: 'I prefer direct, honest communication',
-          bucketWeights: { thinking: 5, sensing: 3, feeling: 2, intuition: 0 },
-          direction: 'up'
-        }
-      ]
-    },
-    {
-      id: '2',
-      text: 'What motivates you most in relationships?',
-      variants: ['What drives your connections?'],
-      type: 'swipe',
-      answers: [
-        {
-          id: '2a',
-          text: 'Deep emotional understanding and connection',
-          bucketWeights: { feeling: 6, intuition: 3, thinking: 1, sensing: 0 },
-          direction: 'right'
-        },
-        {
-          id: '2b',
-          text: 'Clear communication and shared goals',
-          bucketWeights: { thinking: 5, sensing: 4, feeling: 1, intuition: 0 },
-          direction: 'left'
-        },
-        {
-          id: '2c',
-          text: 'Having fun and enjoying time together',
-          bucketWeights: { feeling: 3, sensing: 3, intuition: 2, thinking: 2 },
-          direction: 'up'
-        },
-        {
-          id: '2d',
-          text: 'Relationships are complicated for me',
-          bucketWeights: { intuition: 4, feeling: 3, thinking: 2, sensing: 1 },
-          direction: 'up'
-        },
-        {
-          id: '2e',
-          text: 'Mutual respect and trust above all',
-          bucketWeights: { thinking: 4, feeling: 3, sensing: 2, intuition: 1 },
-          direction: 'up'
-        }
-      ]
-    },
-    {
-      id: '3',
-      text: 'When someone is upset with you, you:',
-      variants: ['How do you handle conflict?'],
-      type: 'swipe',
-      answers: [
-        {
-          id: '3a',
-          text: 'Want to understand the details of what went wrong',
-          bucketWeights: { sensing: 6, thinking: 3, feeling: 1, intuition: 0 },
-          direction: 'right'
-        },
-        {
-          id: '3b',
-          text: 'Focus on the underlying patterns and future prevention',
-          bucketWeights: { intuition: 7, thinking: 2, feeling: 1, sensing: 0 },
-          direction: 'left'
-        }
-      ]
-    },
-    {
-      id: '4',
-      text: 'Your ideal way to express care is:',
-      variants: ['How do you show you care?'],
-      type: 'swipe',
-      answers: [
-        {
-          id: '4a',
-          text: 'Through thoughtful actions and practical support',
-          bucketWeights: { sensing: 5, thinking: 3, feeling: 2, intuition: 0 },
-          direction: 'right'
-        },
-        {
-          id: '4b',
-          text: 'Through deep conversations and emotional presence',
-          bucketWeights: { feeling: 6, intuition: 3, thinking: 1, sensing: 0 },
-          direction: 'left'
-        }
-      ]
-    }
-  ];
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      const res = await getQuestions(session_id);
+      // Adapt API questions to QuizQuestion type (minimal)
+      const adapted: QuizQuestion[] = res.questions.map((q: any) => ({
+        id: q.id,
+        text: q.headline,
+        variants: [],
+        type: 'swipe',
+        answers: [
+          { id: `${q.id}_L`, text: q.left.label, bucketWeights: { thinking: 0, sensing: 0, intuition: 0, feeling: 0 }, direction: 'left' as SwipeDirection },
+          { id: `${q.id}_R`, text: q.right.label, bucketWeights: { thinking: 0, sensing: 0, intuition: 0, feeling: 0 }, direction: 'right' as SwipeDirection },
+          { id: `${q.id}_U`, text: 'Neutral', bucketWeights: { thinking: 0, sensing: 0, intuition: 0, feeling: 0 }, direction: 'up' as SwipeDirection }
+        ]
+      }));
+      setQuestions(adapted);
+      track('intake_submitted', { session_id, story_length: intake_text.length });
+    })();
+  }, [session_id]);
 
   const currentQuestion = questions[currentQuestionIndex];
 
@@ -179,7 +86,11 @@ const PersonalityQuiz: React.FC = () => {
         timestamp: new Date()
       };
 
+      const choice = selectedAnswer.direction === 'left' ? 'left' : selectedAnswer.direction === 'right' ? 'right' : 'neither';
       setAnswers(prev => [...prev, newAnswer]);
+      track('card_answered', { session_id, question_id: currentQuestion.id, choice, intensity: selectedAnswer.direction === 'up' ? 1 : 2 });
+      // send to API
+      answer(session_id, currentQuestion.id, choice as any, selectedAnswer.direction === 'up' ? 1 : 2).catch(() => {});
 
       // Move to next question or complete quiz
       if (currentQuestionIndex < questions.length - 1) {
@@ -190,7 +101,7 @@ const PersonalityQuiz: React.FC = () => {
     }
   };
 
-  const completeQuiz = (allAnswers: QuizSessionAnswer[]) => {
+  const completeQuiz = async (allAnswers: QuizSessionAnswer[]) => {
     // Calculate personality buckets
     const buckets: PersonalityBuckets = {
       feeling: 0,
@@ -222,6 +133,8 @@ const PersonalityQuiz: React.FC = () => {
 
     setResults(buckets);
     setIsCompleted(true);
+    await complete(session_id);
+    track('result_rendered', { session_id, profile_lead: 'Horizon', profile_next: 'Forge' });
   };
 
   const getTopTwoBuckets = (buckets: PersonalityBuckets) => {
@@ -273,10 +186,10 @@ const PersonalityQuiz: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-4">
             <button
-              onClick={() => navigate('/profile')}
+              onClick={() => navigate(`/wimts?session_id=${encodeURIComponent(session_id)}&text=${encodeURIComponent(intake_text)}`)}
               className="glass-button py-3 font-medium"
             >
-              View Profile
+              Continue
             </button>
             <button
               onClick={() => navigate('/relationships')}

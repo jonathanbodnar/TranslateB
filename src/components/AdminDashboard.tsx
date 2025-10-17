@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Users, BarChart, Edit, Save, Plus, Trash2 } from 'lucide-react';
 import { QuizQuestion, QuizTemplate } from '../types';
+import { getConfig, listVersions, publishConfig, putConfig } from '../features/admin/api/adminClient';
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'quiz-editor' | 'analytics'>('overview');
   const [selectedQuiz, setSelectedQuiz] = useState<'quick' | 'deep'>('quick');
   const [editingQuestion, setEditingQuestion] = useState<QuizQuestion | null>(null);
+  const [config, setConfig] = useState<any>(null);
+  const [versions, setVersions] = useState<any[]>([]);
 
   // Mock admin data
   const [stats] = useState({
@@ -80,6 +83,15 @@ const AdminDashboard: React.FC = () => {
   };
 
   const currentTemplate = quizTemplates.find(t => t.type === selectedQuiz);
+
+  useEffect(() => {
+    (async () => {
+      const cfg = await getConfig();
+      setConfig(cfg.current);
+      const vers = await listVersions();
+      setVersions(vers);
+    })();
+  }, []);
 
   return (
     <motion.div 
@@ -161,7 +173,7 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="glass-card p-6">
+            <div className="glass-card p-6 mb-6">
               <h3 className="text-white text-lg font-semibold mb-4">Quiz Templates</h3>
               {quizTemplates.map(template => (
                 <div key={template.id} className="flex items-center justify-between p-3 bg-white/10 rounded-lg mb-3">
@@ -183,6 +195,19 @@ const AdminDashboard: React.FC = () => {
                       <Edit className="w-4 h-4" />
                     </button>
                   </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="glass-card p-6">
+              <h3 className="text-white text-lg font-semibold mb-4">Config Versions</h3>
+              {versions.map(v => (
+                <div key={v.config_id} className="flex items-center justify-between p-3 bg-white/10 rounded-lg mb-3">
+                  <div>
+                    <div className="text-white font-medium">{v.config_id}</div>
+                    <div className="text-white/60 text-sm">{v.status} • {new Date(v.created_at).toLocaleString()}</div>
+                  </div>
+                  <button onClick={async () => { await publishConfig(v.config_id); }} className="glass-button px-3 py-1">Publish</button>
                 </div>
               ))}
             </div>
@@ -232,7 +257,7 @@ const AdminDashboard: React.FC = () => {
                   <h3 className="text-white text-lg font-semibold">
                     {currentTemplate.name} Questions
                   </h3>
-                  <button className="glass-button p-2">
+                  <button className="glass-button p-2" onClick={() => {/* open editor later */}}>
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
@@ -285,7 +310,9 @@ const AdminDashboard: React.FC = () => {
 
                 {/* Save Button */}
                 <div className="flex justify-end mt-6">
-                  <button className="glass-button px-6 py-3 flex items-center gap-2">
+                  <button onClick={async () => {
+                    await putConfig({ quizTemplates });
+                  }} className="glass-button px-6 py-3 flex items-center gap-2">
                     <Save className="w-4 h-4" />
                     Publish Changes
                   </button>

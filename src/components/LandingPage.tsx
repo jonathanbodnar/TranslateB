@@ -1,34 +1,32 @@
-import React, { useCallback, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useCallback, useEffect, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { MessageCircle, Brain, Users, Sparkles } from 'lucide-react';
 import SimpleWaves from './SimpleWaves';
 import { useWindowSize } from '../hooks/useWindowSize';
-import { track } from '../analytics/tracker';
+import { startSession } from '../features/intake/api/intakeClient';
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const { width, height } = useWindowSize();
+  const [inputText, setInputText] = useState('');
+  const [isStarting, setIsStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const prefersReducedMotion = useReducedMotion();
 
-  useEffect(() => {
-    track('landing.viewed', { path: '/' });
-  }, []);
 
-  // Create ripple effect when menu items are clicked
-  const handleMenuClick = useCallback((path: string, event: React.MouseEvent) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
-    const y = rect.top + rect.height / 2;
-    
-    // Create ripple at menu item center
-    if ((window as any).createWaveRipple) {
-      (window as any).createWaveRipple(x, y);
+  const handleTranslateStart = useCallback(async () => {
+    if (!inputText.trim() || isStarting) return;
+    setIsStarting(true);
+    setError(null);
+    try {
+      const { session_id } = await startSession(inputText, 'quick');
+      navigate(`/quiz?session_id=${encodeURIComponent(session_id)}&text=${encodeURIComponent(inputText)}`);
+    } catch (e: any) {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setIsStarting(false);
     }
-    
-    // Small delay to show ripple before navigation
-    track('cta.clicked', { target: path });
-    setTimeout(() => navigate(path), 150);
-  }, [navigate]);
+  }, [inputText, isStarting, navigate]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -41,24 +39,33 @@ const LandingPage: React.FC = () => {
     }
   };
 
-  const itemVariants = {
-    hidden: { y: 30, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1
+  const itemVariants = prefersReducedMotion
+    ? {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1 }
+      }
+    : {
+        hidden: { y: 30, opacity: 0 },
+        visible: { y: 0, opacity: 1 }
+      };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && inputText.trim()) {
+      e.preventDefault();
+      handleTranslateStart();
     }
   };
 
   return (
     <motion.div 
-      className="min-h-screen gradient-primary flex flex-col items-center justify-center p-4"
+      className="min-h-screen gradient-primary flex flex-col items-center justify-center p-4 pb-8"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
       {/* Subtle Gradient Waves */}
       <motion.div 
-        className="absolute inset-0 pointer-events-auto"
+        className="absolute inset-0 pointer-events-none"
         variants={itemVariants}
       >
         <SimpleWaves 
@@ -70,7 +77,7 @@ const LandingPage: React.FC = () => {
 
       {/* Main Content */}
       <motion.div 
-        className="text-center z-10 max-w-md mx-auto"
+        className="container text-center z-10 mx-auto container px-4"
         variants={itemVariants}
       >
         <motion.h1 
@@ -93,87 +100,53 @@ const LandingPage: React.FC = () => {
           Enhance your relationships through deeper understanding.
         </motion.p>
 
-        <motion.button
-          className="glass-button px-8 py-4 text-lg font-semibold mb-8 w-full max-w-xs"
+        {/* Input-first flow: start session directly from landing */}
+        <motion.div 
+          className="px-4 mb-8"
           variants={itemVariants}
-          onClick={(e) => handleMenuClick('/translator', e)}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
         >
-          Get Started
-        </motion.button>
-      </motion.div>
-
-      {/* Feature Cards */}
-      <motion.div 
-        className="grid grid-cols-2 gap-4 mt-8 max-w-lg w-full px-4"
-        variants={itemVariants}
-      >
-        <motion.div 
-          className="glass-card p-4 text-center cursor-pointer"
-          whileHover={{ scale: 1.05 }}
-          onClick={(e) => handleMenuClick('/translator', e)}
-        >
-          <MessageCircle className="w-8 h-8 text-white mx-auto mb-2" />
-          <h3 className="text-white font-semibold text-sm mb-1">Quick Translator</h3>
-          <p className="text-secondary text-xs">What you really meant</p>
-        </motion.div>
-
-        <motion.div 
-          className="glass-card p-4 text-center cursor-pointer"
-          whileHover={{ scale: 1.05 }}
-          onClick={(e) => handleMenuClick('/quiz', e)}
-        >
-          <Brain className="w-8 h-8 text-white mx-auto mb-2" />
-          <h3 className="text-white font-semibold text-sm mb-1">Personality Quiz</h3>
-          <p className="text-secondary text-xs">Discover your style</p>
-        </motion.div>
-
-        <motion.div 
-          className="glass-card p-4 text-center cursor-pointer"
-          whileHover={{ scale: 1.05 }}
-          onClick={(e) => handleMenuClick('/relationships', e)}
-        >
-          <Users className="w-8 h-8 text-white mx-auto mb-2" />
-          <h3 className="text-white font-semibold text-sm mb-1">Relationship Web</h3>
-          <p className="text-secondary text-xs">Map connections</p>
-        </motion.div>
-
-        <motion.div 
-          className="glass-card p-4 text-center cursor-pointer"
-          whileHover={{ scale: 1.05 }}
-          onClick={(e) => handleMenuClick('/profile', e)}
-        >
-          <Sparkles className="w-8 h-8 text-white mx-auto mb-2" />
-          <h3 className="text-white font-semibold text-sm mb-1">Your Profile</h3>
-          <p className="text-secondary text-xs">Personal insights</p>
+          <div className="glass-card p-4 text-left">
+            <label className="text-white text-sm font-medium mb-2 block">
+              What are you trying to say?
+            </label>
+            <textarea
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder="I got in a fight with my partner..."
+              className="w-full bg-transparent text-white placeholder-white/60 border-none outline-none resize-none h-24"
+              maxLength={500}
+              autoFocus
+              autoComplete="off"
+              onKeyDown={onKeyDown}
+            />
+            <div className="flex justify-between items-center mt-3">
+              <span aria-live="polite" className="text-white/60 text-xs">
+                {inputText.length}/500
+              </span>
+              <button
+                onClick={handleTranslateStart}
+                disabled={!inputText.trim() || isStarting}
+                aria-busy={isStarting}
+                className="glass-button px-4 py-3 min-h-[44px] flex items-center gap-2 disabled:opacity-50"
+              >
+                {isStarting ? (
+                  <div className="loading-spinner w-4 h-4" />
+                ) : null}
+                Continue to quick quiz
+              </button>
+            </div>
+            {error ? (
+              <p className="text-red-300 text-xs mt-3">
+                {error}
+              </p>
+            ) : null}
+            <p className="text-white/60 text-xs mt-3">
+              We never share your text. You control what’s saved.
+            </p>
+          </div>
         </motion.div>
       </motion.div>
 
-      {/* Bottom Navigation Hint */}
-      <motion.div 
-        className="absolute bottom-8 left-1/2 transform -translate-x-1/2"
-        variants={itemVariants}
-      >
-        <div className="flex space-x-2">
-          <div className="w-2 h-2 bg-white rounded-full opacity-50" />
-          <div className="w-2 h-2 bg-white rounded-full" />
-          <div className="w-2 h-2 bg-white rounded-full opacity-50" />
-        </div>
-      </motion.div>
-
-      {/* Hidden Admin Access */}
-      <motion.div 
-        className="absolute bottom-2 right-4"
-        variants={itemVariants}
-      >
-        <button
-          onClick={() => navigate('/admin')}
-          className="text-white/30 hover:text-white/60 text-xs transition-colors"
-        >
-          Admin
-        </button>
-      </motion.div>
     </motion.div>
   );
 };

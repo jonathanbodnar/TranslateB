@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, TrendingUp, Heart, Brain, Lightbulb, Target, Settings } from 'lucide-react';
 import { PersonalityBuckets } from '../types';
 import { getProfile } from '../features/profile/api/profileClient';
-import { createClient } from '@supabase/supabase-js';
+import { auth } from '../lib/supabase';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -22,14 +22,13 @@ const ProfilePage: React.FC = () => {
   useEffect(() => {
     (async () => {
       let uid = '00000000-0000-0000-0000-000000000000';
-      const url = (import.meta as any).env.VITE_SUPABASE_URL;
-      const key = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
-      if (url && key) {
-        const supabase = createClient(url as string, key as string);
-        const { data } = await supabase.auth.getUser();
+      try {
+        const { data } = await auth.getUser();
         uid = data?.user?.id || uid;
+      } catch (error) {
+        console.warn('Failed to get user:', error);
       }
-      const res = await getProfile(uid);
+      await getProfile(uid);
       // Map snapshot to UI model (minimal)
       const buckets: PersonalityBuckets = { feeling: 81, intuition: 65, thinking: 31, sensing: 28 };
       setUserProfile((prev) => ({

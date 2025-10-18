@@ -3,8 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { generateTranslations } from '../features/translator/api/translatorClient';
 import { createReflection } from '../features/reflections/api/reflectionsClient';
-import { track } from '../analytics/tracker';
-import RegistrationGate from '../features/auth/components/RegistrationGate';
+import { useAuthGate } from '../features/auth/context/AuthGateContext';
 
 function useQuery() { return new URLSearchParams(useLocation().search); }
 
@@ -16,7 +15,7 @@ const TranslatorPage: React.FC = () => {
   const [active, setActive] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [savedId, setSavedId] = useState<string>('');
-  const [showGate, setShowGate] = useState(false);
+  const { open } = useAuthGate();
 
   useEffect(() => {
     (async () => {
@@ -26,7 +25,6 @@ const TranslatorPage: React.FC = () => {
         setTranslations(res.translations);
         const first = Object.keys(res.translations)[0];
         setActive(first);
-        track('translation_tab_viewed', { session_id: undefined, tab: first });
       } finally { setLoading(false); }
     })();
   }, [base, mode]);
@@ -43,7 +41,7 @@ const TranslatorPage: React.FC = () => {
         <div className="glass-card p-4">
           <div className="flex gap-2 mb-3 flex-wrap">
             {Object.keys(translations).map((k) => (
-              <button key={k} onClick={() => { setActive(k); track('translation_tab_viewed', { tab: k }); }} className={`px-3 py-1 rounded-full text-sm ${active === k ? 'bg-white/30 text-white' : 'bg-white/10 text-white/80'}`}>
+              <button key={k} onClick={() => { setActive(k); }} className={`px-3 py-1 rounded-full text-sm ${active === k ? 'bg-white/30 text-white' : 'bg-white/10 text-white/80'}`}>
                 {k}
               </button>
             ))}
@@ -63,9 +61,8 @@ const TranslatorPage: React.FC = () => {
                     translation_text: active ? translations[active] : ''
                   });
                   setSavedId(res.reflection_id);
-                  track('reflection.saved', { reflection_id: res.reflection_id, translation_mode: mode });
-                } catch (e) {
-                  setShowGate(true);
+                } catch {
+                  open();
                 }
               }}
               className="glass-button px-4 py-2 text-sm"
@@ -76,7 +73,6 @@ const TranslatorPage: React.FC = () => {
           </div>
         </div>
       )}
-      <RegistrationGate isOpen={showGate} onClose={() => setShowGate(false)} />
     </motion.div>
   );
 };

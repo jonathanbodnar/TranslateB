@@ -14,6 +14,7 @@ const QuickTranslator: React.FC = () => {
     setIsTranslating(true);
     try {
       const { session_id } = await startSession(inputText, 'quick');
+      try { localStorage.setItem('tb_session_id', session_id); } catch {}
       navigate(`/quiz?session_id=${encodeURIComponent(session_id)}&text=${encodeURIComponent(inputText)}`);
     } finally {
       setIsTranslating(false);

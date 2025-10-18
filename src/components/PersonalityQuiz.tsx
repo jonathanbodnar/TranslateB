@@ -2,9 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, PanInfo } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ChevronRight } from 'lucide-react';
-import { QuizQuestion, QuizSessionAnswer, PersonalityBuckets, SwipeDirection } from '../types';
+import { QuizQuestion, QuizSessionAnswer, SwipeDirection } from '../types';
 import { answer, complete, getQuestions } from '../features/intake/api/intakeClient';
-import { track } from '../analytics/tracker';
 
 const PersonalityQuiz: React.FC = () => {
   const navigate = useNavigate();
@@ -13,36 +12,47 @@ const PersonalityQuiz: React.FC = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<QuizSessionAnswer[]>([]);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [results, setResults] = useState<PersonalityBuckets | null>(null);
+  const [profile, setProfile] = useState<{ lead: string; next: string; mode: string; frictions_top: string[]; fears: Record<string, number> } | null>(null);
   const q = new URLSearchParams(useLocation().search);
   const session_id = q.get('session_id') || '';
   const intake_text = q.get('text') || '';
 
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
-      const res = await getQuestions(session_id);
-      // Adapt API questions to QuizQuestion type (minimal)
-      const adapted: QuizQuestion[] = res.questions.map((q: any) => ({
-        id: q.id,
-        text: q.headline,
-        variants: [],
-        type: 'swipe',
-        answers: [
-          { id: `${q.id}_L`, text: q.left.label, bucketWeights: { thinking: 0, sensing: 0, intuition: 0, feeling: 0 }, direction: 'left' as SwipeDirection },
-          { id: `${q.id}_R`, text: q.right.label, bucketWeights: { thinking: 0, sensing: 0, intuition: 0, feeling: 0 }, direction: 'right' as SwipeDirection },
-          { id: `${q.id}_U`, text: 'Neutral', bucketWeights: { thinking: 0, sensing: 0, intuition: 0, feeling: 0 }, direction: 'up' as SwipeDirection }
-        ]
-      }));
-      setQuestions(adapted);
-      track('intake_submitted', { session_id, story_length: intake_text.length });
+      try {
+        if (!session_id) {
+          setLoadError('Missing session. Please start again.');
+          return;
+        }
+        const res = await getQuestions(session_id);
+        const adapted: QuizQuestion[] = (res?.questions || []).map((q: any) => ({
+          id: q.id,
+          text: q.headline,
+          variants: [],
+          type: 'swipe',
+          answers: [
+            { id: `${q.id}_L`, text: q.left?.label ?? 'Option A', bucketWeights: { thinking: 0, sensing: 0, intuition: 0, feeling: 0 }, direction: 'left' as SwipeDirection },
+            { id: `${q.id}_R`, text: q.right?.label ?? 'Option B', bucketWeights: { thinking: 0, sensing: 0, intuition: 0, feeling: 0 }, direction: 'right' as SwipeDirection },
+            { id: `${q.id}_U`, text: 'Neutral', bucketWeights: { thinking: 0, sensing: 0, intuition: 0, feeling: 0 }, direction: 'up' as SwipeDirection }
+          ]
+        }));
+        setQuestions(adapted);
+      } catch {
+        setLoadError('Failed to load questions. Please try again.');
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [session_id]);
 
   const currentQuestion = questions[currentQuestionIndex];
 
   const handleSwipe = (info: PanInfo) => {
+    if (!currentQuestion) return;
     const threshold = 80;
     const velocityX = info.velocity.x;
     const velocityY = info.velocity.y;
@@ -88,7 +98,6 @@ const PersonalityQuiz: React.FC = () => {
 
       const choice = selectedAnswer.direction === 'left' ? 'left' : selectedAnswer.direction === 'right' ? 'right' : 'neither';
       setAnswers(prev => [...prev, newAnswer]);
-      track('card_answered', { session_id, question_id: currentQuestion.id, choice, intensity: selectedAnswer.direction === 'up' ? 1 : 2 });
       // send to API
       answer(session_id, currentQuestion.id, choice as any, selectedAnswer.direction === 'up' ? 1 : 2).catch(() => {});
 
@@ -101,51 +110,30 @@ const PersonalityQuiz: React.FC = () => {
     }
   };
 
-  const completeQuiz = async (allAnswers: QuizSessionAnswer[]) => {
-    // Calculate personality buckets
-    const buckets: PersonalityBuckets = {
-      feeling: 0,
-      sensing: 0,
-      intuition: 0,
-      thinking: 0
-    };
-
-    allAnswers.forEach(answer => {
-      const question = questions.find(q => q.id === answer.questionId);
-      const selectedAnswer = question?.answers.find(a => a.id === answer.answerId);
-      
-      if (selectedAnswer) {
-        buckets.feeling += selectedAnswer.bucketWeights.feeling;
-        buckets.sensing += selectedAnswer.bucketWeights.sensing;
-        buckets.intuition += selectedAnswer.bucketWeights.intuition;
-        buckets.thinking += selectedAnswer.bucketWeights.thinking;
+  const completeQuiz = async (_allAnswers: QuizSessionAnswer[]) => {
+    // Call backend to complete and get AI-generated profile
+    try {
+      const res = await complete(session_id);
+      if (res && (res as any).profile) {
+        setProfile((res as any).profile);
       }
-    });
-
-    // Normalize to percentages
-    const total = Object.values(buckets).reduce((sum, val) => sum + val, 0);
-    if (total > 0) {
-      buckets.feeling = Math.round((buckets.feeling / total) * 100);
-      buckets.sensing = Math.round((buckets.sensing / total) * 100);
-      buckets.intuition = Math.round((buckets.intuition / total) * 100);
-      buckets.thinking = Math.round((buckets.thinking / total) * 100);
-    }
-
-    setResults(buckets);
+    } catch {}
     setIsCompleted(true);
-    await complete(session_id);
-    track('result_rendered', { session_id, profile_lead: 'Horizon', profile_next: 'Forge' });
   };
 
-  const getTopTwoBuckets = (buckets: PersonalityBuckets) => {
-    const entries = Object.entries(buckets);
-    entries.sort((a, b) => b[1] - a[1]);
-    return entries.slice(0, 2);
-  };
+  // Removed local bucket rendering; profile now comes from backend
 
-  if (isCompleted && results) {
-    const topTwo = getTopTwoBuckets(results);
-    
+  if (isCompleted && profile) {
+    const lead = profile.lead;
+    const next = profile.next;
+    const FEAR_KEYS = ['powerlessness','incompetence','betrayal'] as const;
+    const fearEntries = FEAR_KEYS.map((k) => {
+      const v = Number((profile.fears || ({} as any))[k] ?? 0);
+      const clamped = isFinite(v) ? Math.max(0, Math.min(1, v)) : 0;
+      const pct = Math.round(clamped * 100);
+      const label = k.charAt(0).toUpperCase() + k.slice(1);
+      return { key: k, label, pct };
+    });
     return (
       <motion.div 
         className="min-h-screen gradient-primary flex flex-col items-center justify-center p-4"
@@ -161,28 +149,57 @@ const PersonalityQuiz: React.FC = () => {
           <h2 className="heading-secondary mb-6">Your Personality Profile</h2>
           
           <div className="space-y-4 mb-6">
-            {topTwo.map(([bucket, percentage], index) => (
-              <div key={bucket} className="text-left">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-white font-medium capitalize">{bucket}</span>
-                  <span className="text-white/80">{percentage}%</span>
-                </div>
-                <div className="w-full bg-white/20 rounded-full h-2">
-                  <motion.div 
-                    className="bg-gradient-to-r from-pink-400 to-purple-400 h-2 rounded-full"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${percentage}%` }}
-                    transition={{ delay: 0.5 + index * 0.2, duration: 1 }}
-                  />
-                </div>
+            <div className="text-left">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-white font-medium">Lead</span>
+                <span className="text-white/80">{lead}</span>
               </div>
-            ))}
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-white font-medium">Next</span>
+                <span className="text-white/80">{next}</span>
+              </div>
+              {profile.frictions_top?.length ? (
+                <div className="mt-3">
+                  <div className="text-white font-medium mb-1">Top Frictions</div>
+                  <div className="text-white/70 text-sm">
+                    {profile.frictions_top.join(' · ')}
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
 
-          <p className="text-secondary mb-8">
-            You primarily process through <strong className="text-white">{topTwo[0][0]}</strong> and <strong className="text-white">{topTwo[1][0]}</strong>. 
-            This means you tend to approach relationships with a blend of emotional awareness and practical thinking.
-          </p>
+          {/* Fears (bars) */}
+          <div className="mb-8 text-left">
+            <div className="text-white font-medium mb-3">Fears emphasis</div>
+            <div className="space-y-3">
+              {fearEntries.map(({ key, label, pct }) => (
+                <div key={key}>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-white/80 text-sm">{label}</span>
+                    <span className="text-white/60 text-xs">{pct}%</span>
+                  </div>
+                  <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="h-2 rounded-full bg-gradient-to-r from-pink-400 to-purple-400"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="text-secondary mb-8 text-center">
+            {profile && (profile as any).summary_md ? (
+              <div className="prose prose-invert max-w-none text-white/90" dangerouslySetInnerHTML={{ __html: ((profile as any).summary_md as string).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>') }} />
+            ) : (
+              <>
+                <p className="mb-2">You primarily process through <strong className="text-white">{lead}</strong> and <strong className="text-white">{next}</strong>.</p>
+                <p className="mb-2">This means you tend to approach relationships with a blend of emotional awareness and practical thinking.</p>
+              </>
+            )}
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <button
@@ -199,6 +216,36 @@ const PersonalityQuiz: React.FC = () => {
             </button>
           </div>
         </motion.div>
+      </motion.div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <motion.div 
+        className="min-h-screen gradient-primary flex flex-col items-center justify-center p-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+      >
+        <div className="glass-card p-6 w-full max-w-md text-center">
+          <div className="loading-spinner w-6 h-6 mx-auto mb-3" />
+          <p className="text-white/80">Loading quick quiz…</p>
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <motion.div 
+        className="min-h-screen gradient-primary flex flex-col items-center justify-center p-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+      >
+        <div className="glass-card p-6 w-full max-w-md text-center">
+          <p className="text-red-300 mb-4">{loadError}</p>
+          <button onClick={() => navigate('/')} className="glass-button px-4 py-2">Go back</button>
+        </div>
       </motion.div>
     );
   }
@@ -235,8 +282,8 @@ const PersonalityQuiz: React.FC = () => {
         transition={{ delay: 0.3 }}
       >
         <div className="flex justify-between text-white/60 text-sm mb-2">
-          <span>Question {currentQuestionIndex + 1} of {questions.length}</span>
-          <span>{Math.round(((currentQuestionIndex + 1) / questions.length) * 100)}%</span>
+          <span>Question {Math.min(currentQuestionIndex + 1, questions.length)} of {questions.length}</span>
+          <span>{questions.length ? Math.round(((currentQuestionIndex + 1) / questions.length) * 100) : 0}%</span>
         </div>
         <div className="w-full bg-white/20 rounded-full h-1">
           <motion.div 
@@ -256,36 +303,42 @@ const PersonalityQuiz: React.FC = () => {
         transition={{ delay: 0.4 }}
       >
         <div className="w-full max-w-md">
-          <motion.h2 
-            className="text-white text-xl font-semibold text-center mb-8"
-            key={currentQuestion.id}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            {currentQuestion.text}
-          </motion.h2>
+          {currentQuestion ? (
+            <motion.h2 
+              className="text-white text-xl font-semibold text-center mb-8"
+              key={currentQuestion.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              {currentQuestion.text}
+            </motion.h2>
+          ) : (
+            <div className="h-8 mb-8" />
+          )}
 
           {/* Swipeable Answer Cards */}
           <div className="relative h-80 mb-8" ref={constraintsRef}>
-            <motion.div
-              className="swipe-card glass-card p-6 flex items-center justify-center"
-              drag
-              dragConstraints={constraintsRef}
-              onDragEnd={(_, info) => handleSwipe(info)}
-              whileDrag={{ scale: 1.05, rotate: 2 }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            >
-              <div className="text-center">
-                <p className="text-white text-lg font-medium mb-4">
-                  {currentQuestion.text}
-                </p>
-                <div className="text-white/60 text-sm">
-                  <p>← {currentQuestion.answers.find(a => a.direction === 'left')?.text.substring(0, 30)}...</p>
-                  <p>→ {currentQuestion.answers.find(a => a.direction === 'right')?.text.substring(0, 30)}...</p>
-                  <p>↑ Neutral options available</p>
+            {currentQuestion ? (
+              <motion.div
+                className="swipe-card glass-card p-6 flex items-center justify-center"
+                drag
+                dragConstraints={constraintsRef}
+                onDragEnd={(_, info) => handleSwipe(info)}
+                whileDrag={{ scale: 1.05, rotate: 2 }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              >
+                <div className="text-center">
+                  <p className="text-white text-lg font-medium mb-4">
+                    {currentQuestion.text}
+                  </p>
+                  <div className="text-white/60 text-sm">
+                    <p>← {currentQuestion.answers.find(a => a.direction === 'left')?.text.substring(0, 30)}...</p>
+                    <p>→ {currentQuestion.answers.find(a => a.direction === 'right')?.text.substring(0, 30)}...</p>
+                    <p>↑ Neutral options available</p>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            ) : null}
           </div>
 
           {/* Swipe Instructions */}

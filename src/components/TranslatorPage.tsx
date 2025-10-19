@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import { generateTranslations } from '../features/translator/api/translatorClient';
 import { createReflection } from '../features/reflections/api/reflectionsClient';
 import { useAuthGate } from '../features/auth/context/AuthGateContext';
+import { useAnalytics } from '../hooks/useAnalytics';
+import { ANALYTICS_EVENTS } from '../config/analyticsEvents';
 
 function useQuery() { return new URLSearchParams(useLocation().search); }
 
@@ -16,6 +18,7 @@ const TranslatorPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [savedId, setSavedId] = useState<string>('');
   const { open } = useAuthGate();
+  const { track } = useAnalytics();
 
   useEffect(() => {
     (async () => {
@@ -41,7 +44,10 @@ const TranslatorPage: React.FC = () => {
         <div className="glass-card p-4">
           <div className="flex gap-2 mb-3 flex-wrap">
             {Object.keys(translations).map((k) => (
-              <button key={k} onClick={() => { setActive(k); }} className={`px-3 py-1 rounded-full text-sm ${active === k ? 'bg-white/30 text-white' : 'bg-white/10 text-white/80'}`}>
+              <button key={k} onClick={() => { 
+                setActive(k); 
+                track(ANALYTICS_EVENTS.TRANSLATION_TAB_VIEWED, { tab: k });
+              }} className={`px-3 py-1 rounded-full text-sm ${active === k ? 'bg-white/30 text-white' : 'bg-white/10 text-white/80'}`}>
                 {k}
               </button>
             ))}

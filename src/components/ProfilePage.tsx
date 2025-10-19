@@ -4,10 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, TrendingUp, Heart, Brain, Lightbulb, Target, Settings } from 'lucide-react';
 import { PersonalityBuckets } from '../types';
 import { getProfile } from '../features/profile/api/profileClient';
-import { auth } from '../lib/supabase';
+import { useAuthGate } from '../features/auth/context/AuthGateContext';
+import { useAnalytics } from '../hooks/useAnalytics';
+import { ANALYTICS_EVENTS } from '../config/analyticsEvents';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuthGate();
+  const { track } = useAnalytics();
   
   const [userProfile, setUserProfile] = useState({
     name: 'You',
@@ -20,13 +24,12 @@ const ProfilePage: React.FC = () => {
   });
 
   useEffect(() => {
+    track(ANALYTICS_EVENTS.PROFILE_VIEWED);
+    
     (async () => {
       let uid = '00000000-0000-0000-0000-000000000000';
-      try {
-        const { data } = await auth.getUser();
-        uid = data?.user?.id || uid;
-      } catch (error) {
-        console.warn('Failed to get user:', error);
+      if (user?.id) {
+        uid = user.id;
       }
       await getProfile(uid);
       // Map snapshot to UI model (minimal)
@@ -38,7 +41,7 @@ const ProfilePage: React.FC = () => {
         recentActivity: []
       }));
     })();
-  }, []);
+  }, [user, track]);
 
   const getBucketColor = (bucket: string) => {
     switch (bucket) {

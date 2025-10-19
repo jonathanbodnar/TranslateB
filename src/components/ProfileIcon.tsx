@@ -1,33 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuthGate } from '../features/auth/context/AuthGateContext';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../lib/supabase';
 
 const ProfileIcon: React.FC = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const [showDropdown, setShowDropdown] = useState(true);
-  const { open } = useAuthGate();
+  const [showDropdown, setShowDropdown] = useState(false);
+  const { open, isUserLoggedIn, user } = useAuthGate();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    // Check initial auth state
-    const checkUser = async () => {
-      const { data: { user } } = await auth.getUser();
-      setUser(user);
-      setIsLoggedIn(!!user);
-    };
-
-    checkUser();
-
-    // Listen for auth changes
-    const { data: { subscription } } = auth.onAuthStateChange((event: string, session: any) => {
-      setUser(session?.user || null);
-      setIsLoggedIn(!!session?.user);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   const handleLogout = async () => {
     await auth.signOut();
@@ -51,7 +30,7 @@ const ProfileIcon: React.FC = () => {
           onClick={() => setShowDropdown(!showDropdown)}
           className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors"
         >
-          {isLoggedIn && user?.user_metadata?.avatar_url ? (
+          {isUserLoggedIn && user?.user_metadata?.avatar_url ? (
             <img
               src={user.user_metadata.avatar_url}
               alt="Profile"
@@ -76,7 +55,7 @@ const ProfileIcon: React.FC = () => {
 
         {showDropdown && (
           <div className="absolute right-0 mt-2 w-48 glass-card p-2 rounded-lg shadow-lg z-50">
-            {isLoggedIn ? (
+            {isUserLoggedIn ? (
               <>
                 <div className="px-3 py-2 text-white/80 text-sm border-b border-white/10">
                   {user?.email || 'User'}

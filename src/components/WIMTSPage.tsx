@@ -17,7 +17,7 @@ function useQuery() {
 const WIMTSPage: React.FC = () => {
   const navigate = useNavigate();
   const q = useQuery();
-  const session_id = q.get('session_id') || '';
+  const session_id = q.get('session_id') || null;
   const intake_text = q.get('text') || '';
   
   const [options, setOptions] = useState<WIMTSOption[]>([]);
@@ -36,7 +36,6 @@ const WIMTSPage: React.FC = () => {
   const [inputText, setInputText] = useState(intake_text);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [wimtsSessionId, setWimtsSessionId] = useState<string | null>(null);
-  
   // Fetch user profile on mount
   useEffect(() => {
     const fetchProfile = async () => {

@@ -8,7 +8,7 @@ import { createReflection } from '../features/reflections/api/reflectionsClient'
 import { useAuthGate } from '../features/auth/context/AuthGateContext';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { ANALYTICS_EVENTS } from '../config/analyticsEvents';
-import { getProfile } from '../features/profile/api/profileClient';
+import { supabase } from '../lib/supabase';
 
 function useQuery() {
   return new URLSearchParams(useLocation().search);
@@ -36,21 +36,64 @@ const WIMTSPage: React.FC = () => {
   const [inputText, setInputText] = useState(intake_text);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [wimtsSessionId, setWimtsSessionId] = useState<string | null>(null);
-  // Fetch user profile on mount
+  
+  // Load profile from tb_profile or fetch from API
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (user?.id) {
+    const loadProfile = async () => {
+      // Check for tb_profile in localStorage
+      const storedProfile = localStorage.getItem('tb_profile');
+      if (storedProfile) {
         try {
-          const profile = await getProfile(user.id);
+          const { profile } = JSON.parse(storedProfile);
           setUserProfile(profile);
+          return;
         } catch (error) {
-          console.error('Failed to fetch profile:', error);
-          // Continue without profile data
+          console.error('Failed to parse tb_profile:', error);
         }
       }
+      
+      // If no profile in localStorage and user is logged in, fetch from API
+      if (user?.id) {
+        try {
+          const response = await fetch(`${window.location.origin}/api/profile/${user.id}`, {
+            headers: {
+              'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+            }
+          });
+          
+          if (response.ok) {
+            const fullProfile = await response.json();
+            // Extract the cognitive snapshot for WIMTS
+            const profileData = {
+              lead: fullProfile.cognitive_snapshot.dominant_streams[0] || 'Feeling',
+              next: fullProfile.cognitive_snapshot.dominant_streams[1] || 'Intuition',
+              mode: 'Inward-led',
+              processing_tendencies: fullProfile.cognitive_snapshot.processing_tendencies,
+              communication_lens: fullProfile.cognitive_snapshot.communication_lens
+            };
+            
+            // Store in localStorage for future use
+            localStorage.setItem('tb_profile', JSON.stringify({
+              profile: profileData,
+              timestamp: new Date().toISOString()
+            }));
+            
+            setUserProfile(profileData);
+            return;
+          }
+        } catch (error) {
+          console.error('Failed to fetch profile from API:', error);
+        }
+      }
+      
+      // If no profile and user is not logged in, redirect to quiz
+      if (!user) {
+        navigate('/?action=start_quiz');
+      }
     };
-    fetchProfile();
-  }, [user?.id]);
+    
+    loadProfile();
+  }, [user, navigate]);
 
   // Auto-generate if we have query params (came from quiz)
   useEffect(() => {

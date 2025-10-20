@@ -19,19 +19,24 @@ const RegistrationGate: React.FC = () => {
 
   const claimSessionIfAny = async () => {
     try {
-      const sid = localStorage.getItem('tb_session_id');
-      if (!sid) return;
+
+      const profileKey = JSON.parse(localStorage.getItem('tb_profile') || '{}');
+      const sessionId = profileKey.session_id;
       
       // Get current session to get token
       const { data } = await auth.getSession();
       if (!data?.session?.access_token) {
+        console.warn('[RegistrationGate] No session token available yet');
         return;
       }
       
+      console.log('[RegistrationGate] Session token obtained');
+      
       // Check for stored profile
-      const profileKey = `tb_profile_${sid}`;
       const storedProfile = localStorage.getItem(profileKey);
       const profileData = storedProfile ? JSON.parse(storedProfile).profile : null;
+      
+      console.log('[RegistrationGate] Claiming session:', sessionId, 'with profile:', !!profileData);
       
       await apiFetch('/api/auth/claim-session', { 
         method: 'POST',
@@ -40,17 +45,18 @@ const RegistrationGate: React.FC = () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ 
-          session_id: sid,
+          session_id: sessionId,
           profile: profileData
         }) 
       });
       
-      // Clean up after successful claim
-      if (storedProfile) {
-        localStorage.removeItem(profileKey);
-      }
+      console.log('[RegistrationGate] Session claimed successfully');
+      
+      // Clean up localStorage
+      localStorage.removeItem(profileKey);
+      console.log('[RegistrationGate] LocalStorage cleaned up');
     } catch (err) {
-      console.error('Failed to claim session:', err);
+      console.error('[RegistrationGate] Failed to claim session:', err);
     }
   };
 

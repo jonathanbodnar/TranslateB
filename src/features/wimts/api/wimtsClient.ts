@@ -12,16 +12,29 @@ export interface WIMTSGenerateResponse {
 }
 
 export async function generateWIMTS(session_id: string | null, intake_text: string, profile: any): Promise<WIMTSGenerateResponse> {
+  const payload: any = { intake_text, profile };
+  if (session_id) {
+    payload.session_id = session_id;
+  }
+  
   return apiFetch<WIMTSGenerateResponse>('/api/wimts/generate', {
     method: 'POST',
-    body: JSON.stringify({ session_id: session_id || null, intake_text, profile })
+    body: JSON.stringify(payload)
   });
 }
 
 export async function selectWIMTS(session_id: string | null, wimts_session_id: string | null, option_id: string) {
+  const payload: any = { option_id };
+  if (session_id) {
+    payload.session_id = session_id;
+  }
+  if (wimts_session_id) {
+    payload.wimts_session_id = wimts_session_id;
+  }
+  
   return apiFetch<{ chosen_option_id: string }>('/api/wimts/select', {
     method: 'POST',
-    body: JSON.stringify({ session_id: session_id || null, wimts_session_id, option_id })
+    body: JSON.stringify(payload)
   });
 }
 

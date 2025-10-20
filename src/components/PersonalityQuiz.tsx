@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, PanInfo } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { QuizQuestion, QuizSessionAnswer, SwipeDirection } from '../types';
 import { answer, complete, getQuestions } from '../features/intake/api/intakeClient';
 
@@ -12,6 +12,7 @@ const PersonalityQuiz: React.FC = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<QuizSessionAnswer[]>([]);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [isGeneratingProfile, setIsGeneratingProfile] = useState(false);
   const [profile, setProfile] = useState<{ lead: string; next: string; mode: string; frictions_top: string[]; fears: Record<string, number> } | null>(null);
   const q = new URLSearchParams(useLocation().search);
   const session_id = q.get('session_id') || '';
@@ -111,6 +112,8 @@ const PersonalityQuiz: React.FC = () => {
   };
 
   const completeQuiz = async (_allAnswers: QuizSessionAnswer[]) => {
+    setIsGeneratingProfile(true);
+    
     // Call backend to complete and get AI-generated profile
     try {
       const res = await complete(session_id);
@@ -118,8 +121,7 @@ const PersonalityQuiz: React.FC = () => {
         const profileData = (res as any).profile;
         setProfile(profileData);
         
-        // Store profile in localStorage for anonymous users
-        // This allows us to restore it when they sign up
+        // Store profile in localStorage using unified key
         try {
           const profileStorage = {
             session_id,
@@ -127,18 +129,47 @@ const PersonalityQuiz: React.FC = () => {
             intake_text,
             timestamp: new Date().toISOString()
           };
-          localStorage.setItem(`tb_profile_${session_id}`, JSON.stringify(profileStorage));
-          console.log('Profile stored for session:', session_id);
+          localStorage.setItem('tb_profile', JSON.stringify(profileStorage));
+          console.log('Profile stored in tb_profile');
         } catch (storageError) {
           console.error('Failed to store profile:', storageError);
           // Continue even if storage fails - not critical
         }
       }
-    } catch {}
-    setIsCompleted(true);
+    } catch (error) {
+      console.error('Failed to generate profile:', error);
+    } finally {
+      setIsGeneratingProfile(false);
+      setIsCompleted(true);
+    }
   };
 
   // Removed local bucket rendering; profile now comes from backend
+
+  // Show loading state while generating profile
+  if (isGeneratingProfile) {
+    return (
+      <motion.div 
+        className="min-h-screen gradient-primary flex flex-col items-center justify-center p-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+      >
+        <motion.div 
+          className="glass-card p-8 max-w-md w-full text-center"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.2 }}
+        >
+          <div className="loading-spinner w-12 h-12 mx-auto mb-4" />
+          <h2 className="heading-secondary mb-3">Analyzing your responses...</h2>
+          <p className="text-white/60 text-sm">
+            Our AI is generating your personalized communication profile.
+            This will just take a moment.
+          </p>
+        </motion.div>
+      </motion.div>
+    );
+  }
 
   if (isCompleted && profile) {
     const lead = profile.lead;
@@ -218,19 +249,19 @@ const PersonalityQuiz: React.FC = () => {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="gap-4">
             <button
               onClick={() => navigate(`/wimts?session_id=${encodeURIComponent(session_id)}&text=${encodeURIComponent(intake_text)}`)}
-              className="glass-button py-3 font-medium"
+              className="w-full glass-button py-3 font-medium"
             >
               Continue
             </button>
-            <button
+            {/* <button
               onClick={() => navigate('/relationships')}
               className="glass-button py-3 font-medium flex items-center justify-center gap-2"
             >
               Next <ChevronRight className="w-4 h-4" />
-            </button>
+            </button> */}
           </div>
         </motion.div>
       </motion.div>

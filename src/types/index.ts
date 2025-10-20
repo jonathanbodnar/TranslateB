@@ -66,8 +66,8 @@ export interface QuizQuestion {
 export interface QuizAnswer {
   id: string;
   text: string;
-  bucketWeights: PersonalityBuckets;
   direction?: SwipeDirection;
+  // bucketWeights removed - not used by backend AI generation
 }
 
 export type QuestionType = 'swipe' | 'multiChoice' | 'slider';

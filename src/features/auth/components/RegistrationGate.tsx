@@ -20,8 +20,38 @@ const RegistrationGate: React.FC = () => {
   const claimSessionIfAny = async () => {
     try {
       const sid = localStorage.getItem('tb_session_id');
-      if (sid) await apiFetch('/api/auth/claim-session', { method: 'POST', body: JSON.stringify({ session_id: sid }) });
-    } catch {}
+      if (!sid) return;
+      
+      // Get current session to get token
+      const { data } = await auth.getSession();
+      if (!data?.session?.access_token) {
+        return;
+      }
+      
+      // Check for stored profile
+      const profileKey = `tb_profile_${sid}`;
+      const storedProfile = localStorage.getItem(profileKey);
+      const profileData = storedProfile ? JSON.parse(storedProfile).profile : null;
+      
+      await apiFetch('/api/auth/claim-session', { 
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${data.session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          session_id: sid,
+          profile: profileData
+        }) 
+      });
+      
+      // Clean up after successful claim
+      if (storedProfile) {
+        localStorage.removeItem(profileKey);
+      }
+    } catch (err) {
+      console.error('Failed to claim session:', err);
+    }
   };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -33,12 +63,25 @@ const RegistrationGate: React.FC = () => {
       if (isLogin) {
         const { error: signInErr } = await auth.signInWithPassword({ email, password });
         if (signInErr) throw signInErr;
+        // Login creates session immediately - claim it
+        await claimSessionIfAny();
+        close();
       } else {
-        const { error: signUpErr } = await auth.signUp({ email, password });
+        const { data, error: signUpErr } = await auth.signUp({ email, password });
         if (signUpErr) throw signUpErr;
+        
+        // Check if email confirmation is required
+        if (data?.user && !data?.session) {
+          // No session = email confirmation required
+          setError('Please check your email to confirm your account before signing in.');
+          setSubmitting(false);
+          return;
+        }
+        
+        // Session created immediately (confirmation disabled)
+        await claimSessionIfAny();
+        close();
       }
-      await claimSessionIfAny();
-      close();
     } catch (e: any) {
       setError(e?.message || 'Failed to authenticate');
     } finally {

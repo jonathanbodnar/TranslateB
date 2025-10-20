@@ -35,9 +35,9 @@ const PersonalityQuiz: React.FC = () => {
           variants: [],
           type: 'swipe',
           answers: [
-            { id: `${q.id}_L`, text: q.left?.label ?? 'Option A', bucketWeights: { thinking: 0, sensing: 0, intuition: 0, feeling: 0 }, direction: 'left' as SwipeDirection },
-            { id: `${q.id}_R`, text: q.right?.label ?? 'Option B', bucketWeights: { thinking: 0, sensing: 0, intuition: 0, feeling: 0 }, direction: 'right' as SwipeDirection },
-            { id: `${q.id}_U`, text: 'Neutral', bucketWeights: { thinking: 0, sensing: 0, intuition: 0, feeling: 0 }, direction: 'up' as SwipeDirection }
+            { id: `${q.id}_L`, text: q.left?.label ?? 'Option A', direction: 'left' as SwipeDirection },
+            { id: `${q.id}_R`, text: q.right?.label ?? 'Option B', direction: 'right' as SwipeDirection },
+            { id: `${q.id}_U`, text: 'Neutral', direction: 'up' as SwipeDirection }
           ]
         }));
         setQuestions(adapted);
@@ -115,7 +115,24 @@ const PersonalityQuiz: React.FC = () => {
     try {
       const res = await complete(session_id);
       if (res && (res as any).profile) {
-        setProfile((res as any).profile);
+        const profileData = (res as any).profile;
+        setProfile(profileData);
+        
+        // Store profile in localStorage for anonymous users
+        // This allows us to restore it when they sign up
+        try {
+          const profileStorage = {
+            session_id,
+            profile: profileData,
+            intake_text,
+            timestamp: new Date().toISOString()
+          };
+          localStorage.setItem(`tb_profile_${session_id}`, JSON.stringify(profileStorage));
+          console.log('Profile stored for session:', session_id);
+        } catch (storageError) {
+          console.error('Failed to store profile:', storageError);
+          // Continue even if storage fails - not critical
+        }
       }
     } catch {}
     setIsCompleted(true);

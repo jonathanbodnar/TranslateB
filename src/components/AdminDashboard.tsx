@@ -10,7 +10,7 @@ const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'quiz-editor' | 'analytics'>('overview');
   const [selectedQuiz, setSelectedQuiz] = useState<'quick' | 'deep'>('quick');
   const [editingQuestion, setEditingQuestion] = useState<QuizQuestion | null>(null);
-  const [config, setConfig] = useState<any>(null);
+  const [_config, setConfig] = useState<any>(null);
   const [versions, setVersions] = useState<any[]>([]);
 
   // Mock admin data
@@ -38,12 +38,12 @@ const AdminDashboard: React.FC = () => {
             {
               id: 'q1a',
               text: 'Think through what I want to say logically first',
-              bucketWeights: { thinking: 7, sensing: 2, intuition: 1, feeling: 0 }
+              direction: 'left'
             },
             {
               id: 'q1b', 
               text: 'Focus on how the other person might feel',
-              bucketWeights: { feeling: 8, intuition: 1, sensing: 1, thinking: 0 }
+              direction: 'right'
             }
           ]
         }
@@ -296,10 +296,7 @@ const AdminDashboard: React.FC = () => {
                           <div key={answer.id} className="bg-white/10 rounded p-3">
                             <p className="text-white/90 text-sm mb-2">{answer.text}</p>
                             <div className="flex gap-4 text-xs">
-                              <span className="text-pink-300">F: {answer.bucketWeights.feeling}</span>
-                              <span className="text-green-300">S: {answer.bucketWeights.sensing}</span>
-                              <span className="text-purple-300">I: {answer.bucketWeights.intuition}</span>
-                              <span className="text-blue-300">T: {answer.bucketWeights.thinking}</span>
+                              <span className="text-white/60">Direction: {answer.direction || 'N/A'}</span>
                             </div>
                           </div>
                         ))}
@@ -408,30 +405,26 @@ const AdminDashboard: React.FC = () => {
                       className="w-full bg-white/10 text-white placeholder-white/60 border border-white/20 rounded-lg px-3 py-2 outline-none focus:border-white/40 mb-3"
                     />
                     
-                    <div className="grid grid-cols-4 gap-2">
-                      {Object.entries(answer.bucketWeights).map(([bucket, weight]) => (
-                        <div key={bucket}>
-                          <label className="text-white/60 text-xs capitalize">{bucket}</label>
-                          <input
-                            type="number"
-                            min="0"
-                            max="10"
-                            value={weight}
-                            onChange={(e) => {
-                              const newAnswers = [...editingQuestion.answers];
-                              newAnswers[index] = {
-                                ...answer,
-                                bucketWeights: {
-                                  ...answer.bucketWeights,
-                                  [bucket]: parseInt(e.target.value) || 0
-                                }
-                              };
-                              setEditingQuestion({ ...editingQuestion, answers: newAnswers });
-                            }}
-                            className="w-full bg-white/10 text-white border border-white/20 rounded px-2 py-1 text-sm outline-none focus:border-white/40"
-                          />
-                        </div>
-                      ))}
+                    <div className="grid grid-cols-1 gap-2">
+                      <div>
+                        <label className="text-white/60 text-xs">Swipe Direction</label>
+                        <select
+                          value={answer.direction || 'left'}
+                          onChange={(e) => {
+                            const newAnswers = [...editingQuestion.answers];
+                            newAnswers[index] = {
+                              ...answer,
+                              direction: e.target.value as any
+                            };
+                            setEditingQuestion({ ...editingQuestion, answers: newAnswers });
+                          }}
+                          className="w-full bg-white/10 text-white border border-white/20 rounded px-2 py-1 text-sm outline-none focus:border-white/40"
+                        >
+                          <option value="left">Left</option>
+                          <option value="right">Right</option>
+                          <option value="up">Up (Neutral)</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
                 ))}

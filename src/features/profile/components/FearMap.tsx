@@ -43,7 +43,7 @@ export const FearMap: React.FC<FearMapProps> = ({ data }) => {
             >
               <div className="flex justify-between items-center mb-1">
                 <span className="text-white capitalize">{fear.key}</span>
-                <span className="text-white/80 text-sm">{Math.round(fear.pct * 100)}%</span>
+                <span className="text-white/80 text-sm">{Math.round(fear.pct)}%</span>
               </div>
               <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
                 <motion.div
@@ -56,7 +56,7 @@ export const FearMap: React.FC<FearMapProps> = ({ data }) => {
                     })`
                   }}
                   initial={{ width: 0 }}
-                  animate={{ width: `${fear.pct * 100}%` }}
+                  animate={{ width: `${fear.pct}%` }}
                   transition={{ duration: 1, delay: 0.4 + index * 0.1 }}
                 />
               </div>

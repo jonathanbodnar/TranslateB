@@ -19,9 +19,18 @@ const RegistrationGate: React.FC = () => {
 
   const claimSessionIfAny = async () => {
     try {
-
-      const profileKey = JSON.parse(localStorage.getItem('tb_profile') || '{}');
-      const sessionId = profileKey.session_id;
+      // Find any tb_profile_* keys in localStorage
+      const profileKeys = Object.keys(localStorage).filter(key => key.startsWith('tb_profile_'));
+      console.log('[RegistrationGate] Profile keys found:', profileKeys);
+      
+      if (profileKeys.length === 0) {
+        console.log('[RegistrationGate] No session profile to claim');
+        return;
+      }
+      
+      // Use the first (and should be only) profile key
+      const profileKey = profileKeys[0];
+      const sessionId = profileKey.replace('tb_profile_', '');
       
       // Get current session to get token
       const { data } = await auth.getSession();

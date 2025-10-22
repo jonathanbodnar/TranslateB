@@ -11,10 +11,18 @@ export interface WIMTSGenerateResponse {
   wimts_session_id: string | null;
 }
 
-export async function generateWIMTS(session_id: string | null, intake_text: string, profile: any): Promise<WIMTSGenerateResponse> {
+export async function generateWIMTS(
+  session_id: string | null, 
+  intake_text: string, 
+  profile: any,
+  recipient_id?: string // NEW: Optional recipient ID
+): Promise<WIMTSGenerateResponse> {
   const payload: any = { intake_text, profile };
   if (session_id) {
     payload.session_id = session_id;
+  }
+  if (recipient_id) {
+    payload.recipient_id = recipient_id;
   }
   
   return apiFetch<WIMTSGenerateResponse>('/api/wimts/generate', {

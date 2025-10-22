@@ -1,104 +1,276 @@
-import React, { useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useEffect, useState, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, User, Heart, Briefcase, Users, Home, Edit3 } from 'lucide-react';
-import { Relationship } from '../types';
-import Constellation, { Rel } from '../features/contacts/components/Constellation';
+import Constellation from '../features/contacts/components/Constellation';
+import { 
+  getContacts, 
+  createContact, 
+  getContactSliders, 
+  updateContactSliders,
+  Contact,
+  ContactSliders 
+} from '../features/contacts/api/contactsClient';
+import { AddContactModal } from '../features/contacts/components/AddContactModal';
+import { ContactDetailDrawer } from '../features/contacts/components/ContactDetailDrawer';
+import { useAuth } from '../hooks/useAuth';
+import { getPresetForType } from '../features/contacts/constants/presets';
 
 const RelationshipWeb: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [showAddForm, setShowAddForm] = useState(false);
-  const [selectedRelationship, setSelectedRelationship] = useState<Relationship | null>(null);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [selectedSliders, setSelectedSliders] = useState<ContactSliders | null>(null);
   
-  // Mock relationships data
-  const [relationships] = useState<Relationship[]>([
-    {
-      id: '1',
-      name: 'Sarah',
-      relationshipType: 'Partner',
-      emotionalCloseness: 9,
-      affectionLevel: 8,
-      context: 'My wife - we communicate well but sometimes struggle during stress',
-      inferredProfile: {
-        buckets: { feeling: 60, sensing: 20, intuition: 15, thinking: 5 },
-        fears: ['abandonment'],
-        longings: ['security'],
-        copingMechanisms: ['talking'],
-        tonePreference: 'tender',
-        processingLens: 'feeling'
-      }
-    },
-    {
-      id: '2',
-      name: 'Mike',
-      relationshipType: 'Boss',
-      emotionalCloseness: 4,
-      affectionLevel: 6,
-      context: 'My manager - very analytical, prefers direct communication',
-      inferredProfile: {
-        buckets: { thinking: 70, sensing: 20, feeling: 5, intuition: 5 },
-        fears: ['inefficiency'],
-        longings: ['results'],
-        copingMechanisms: ['planning'],
-        tonePreference: 'blunt',
-        processingLens: 'thinking'
-      }
-    },
-    {
-      id: '3',
-      name: 'Emma',
-      relationshipType: 'Friend',
-      emotionalCloseness: 7,
-      affectionLevel: 8,
-      context: 'Best friend since college - very intuitive and creative',
-      inferredProfile: {
-        buckets: { intuition: 50, feeling: 30, thinking: 15, sensing: 5 },
-        fears: ['conformity'],
-        longings: ['authenticity'],
-        copingMechanisms: ['creating'],
-        tonePreference: 'poetic',
-        processingLens: 'intuition'
+  // Real data state
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const fetchingRef = useRef(false);
+
+  // Fetch contacts on mount (with proper deduplication)
+  useEffect(() => {
+    if (!user) return;
+    
+    // Prevent duplicate calls in StrictMode
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+    
+    async function fetchContacts() {
+      try {
+        setLoading(true);
+        const data = await getContacts();
+        setContacts(data);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch contacts:', err);
+        setError('Failed to load contacts');
+      } finally {
+        setLoading(false);
       }
     }
-  ]);
 
-  const getRelationshipIcon = (type: string) => {
-    switch (type.toLowerCase()) {
+    fetchContacts();
+    
+    // Cleanup to allow refetch if component remounts
+    return () => {
+      fetchingRef.current = false;
+    };
+  }, [user]);
+
+  // Fetch sliders when contact is selected
+  useEffect(() => {
+    if (!selectedContact) {
+      setSelectedSliders(null);
+      return;
+    }
+
+    async function fetchSliders() {
+      if (!selectedContact) return;
+      
+      try {
+        const sliders = await getContactSliders(selectedContact.id);
+        setSelectedSliders(sliders);
+      } catch (err) {
+        console.error('Failed to fetch sliders:', err);
+        setSelectedSliders(null);
+      }
+    }
+
+    fetchSliders();
+  }, [selectedContact]);
+
+  // Handle add contact
+  const handleAddContact = async (name: string, relationshipType: string) => {
+    try {
+      const result = await createContact({
+        name,
+        relationship_type: relationshipType
+      });
+      
+      // Auto-apply preset for relationship type
+      if (result.contact_id && relationshipType) {
+        const preset = getPresetForType(relationshipType);
+        if (preset) {
+          try {
+            await updateContactSliders(result.contact_id, preset);
+          } catch (presetError) {
+            console.error('Failed to apply preset:', presetError);
+            // Don't fail contact creation if preset fails
+          }
+        }
+      }
+      
+      // Refetch contacts to get the new one
+      const updatedContacts = await getContacts();
+      setContacts(updatedContacts);
+      setShowAddForm(false);
+    } catch (err) {
+      console.error('Failed to create contact:', err);
+      alert('Failed to create contact');
+    }
+  };
+
+  // Handle batch slider update
+  const handleSlidersUpdate = async (updatedSliders: ContactSliders) => {
+    if (!selectedContact) return;
+
+    try {
+      // Send only the slider values (exclude contact_id)
+      const { contact_id: _contact_id, ...sliderValues} = updatedSliders;
+      await updateContactSliders(selectedContact.id, sliderValues);
+
+      // Update local state for immediate feedback
+      setSelectedSliders(updatedSliders);
+    } catch (err) {
+      console.error('Failed to update sliders:', err);
+      throw err; // Let the drawer handle the error
+    }
+  };
+
+  // Handle contact delete or update - refresh the list
+  const handleContactChange = async () => {
+    try {
+      const updatedContacts = await getContacts();
+      setContacts(updatedContacts);
+      setSelectedContact(null);
+    } catch (err) {
+      console.error('Failed to refresh contacts:', err);
+    }
+  };
+
+  // Helper functions
+  const getRelationshipIcon = (type?: string) => {
+    const typeStr = (type || '').toLowerCase();
+    switch (typeStr) {
       case 'partner':
       case 'spouse':
-        return <Heart className="w-5 h-5" />;
+        return <Heart className="w-5 h-5 text-white" />;
       case 'boss':
       case 'manager':
       case 'colleague':
-        return <Briefcase className="w-5 h-5" />;
+        return <Briefcase className="w-5 h-5 text-white" />;
       case 'friend':
-        return <Users className="w-5 h-5" />;
+      case 'best friend':
+        return <Users className="w-5 h-5 text-white" />;
       case 'family':
-        return <Home className="w-5 h-5" />;
+        return <Home className="w-5 h-5 text-white" />;
       default:
-        return <User className="w-5 h-5" />;
+        return <User className="w-5 h-5 text-white" />;
     }
   };
 
-  const getRelationshipColor = (closeness: number) => {
-    if (closeness >= 8) return 'from-pink-400 to-red-400';
-    if (closeness >= 6) return 'from-purple-400 to-indigo-400';
-    if (closeness >= 4) return 'from-blue-400 to-cyan-400';
-    return 'from-gray-400 to-gray-500';
-  };
+  // Auth guard
+  if (!user) {
+    return (
+      <div className="min-h-screen gradient-primary flex items-center justify-center">
+        <div className="glass-card p-8 text-center max-w-md">
+          <h2 className="text-white text-xl mb-4">Please log in to view your relationship web</h2>
+          <button 
+            onClick={() => navigate('/')}
+            className="glass-button px-6 py-2"
+          >
+            Go Home
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-  const getPositionForIndex = (index: number, total: number) => {
-    const angle = (index / total) * 2 * Math.PI;
-    const radius = 120;
-    const centerX = 150;
-    const centerY = 150;
-    
-    return {
-      x: centerX + radius * Math.cos(angle),
-      y: centerY + radius * Math.sin(angle)
-    };
-  };
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen gradient-primary flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="loading-spinner w-12 h-12" />
+          <p className="text-white/60">Loading your connections...</p>
+        </div>
+      </div>
+    );
+  }
 
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen gradient-primary flex items-center justify-center">
+        <div className="glass-card p-8 text-center max-w-md">
+          <h2 className="text-white text-xl mb-4">{error}</h2>
+          <button 
+            onClick={() => window.location.reload()}
+            className="glass-button px-6 py-2"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (contacts.length === 0) {
+    return (
+      <motion.div 
+        className="min-h-screen gradient-primary"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+      >
+        {/* Header */}
+        <motion.div 
+          className="flex items-center justify-between p-4 pt-12 mb-6"
+          initial={{ y: -50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2 }}
+        >
+          <button 
+            onClick={() => navigate('/')}
+            className="glass-button p-2 rounded-full"
+          >
+            <ArrowLeft className="w-6 h-6 text-white" />
+          </button>
+          <h1 className="text-white text-xl font-semibold">Relationship Web</h1>
+          <button 
+            onClick={() => setShowAddForm(true)}
+            className="glass-button p-2 rounded-full"
+          >
+            <Plus className="w-6 h-6 text-white" />
+          </button>
+        </motion.div>
+
+        <div className="px-4 pb-8 flex items-center justify-center" style={{ minHeight: 'calc(100vh - 120px)' }}>
+          <motion.div 
+            className="glass-card p-8 text-center max-w-md"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Users className="w-16 h-16 text-white/40 mx-auto mb-4" />
+            <h2 className="text-white text-2xl font-semibold mb-3">No Contacts Yet</h2>
+            <p className="text-white/60 mb-6 leading-relaxed">
+              Start building your relationship web by adding your first contact. 
+              Track communication styles and personalize your interactions.
+            </p>
+            <button 
+              onClick={() => setShowAddForm(true)}
+              className="glass-button px-6 py-3 inline-flex items-center gap-2"
+            >
+              <Plus className="w-5 h-5" />
+              Add First Contact
+            </button>
+          </motion.div>
+        </div>
+
+        {/* Add Contact Form Modal */}
+        <AddContactModal 
+          show={showAddForm}
+          onClose={() => setShowAddForm(false)}
+          onAdd={handleAddContact}
+        />
+      </motion.div>
+    );
+  }
+
+  // Main view with contacts
   return (
     <motion.div 
       className="min-h-screen gradient-primary"
@@ -129,241 +301,80 @@ const RelationshipWeb: React.FC = () => {
       </motion.div>
 
       <div className="px-4 pb-8">
-        {/* Relationship Web Visualization (Cytoscape) */}
+        {/* Constellation Visualization */}
         <motion.div 
           className="glass-card p-6 mb-6 h-80"
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.3 }}
         >
-          <h3 className="text-white text-lg font-semibold mb-4 text-center">Your Connections</h3>
+          <h3 className="text-white text-lg font-semibold mb-4 text-center">
+            Your Connections ({contacts.length})
+          </h3>
           <Constellation
-            relationships={relationships.map(r => ({ id: r.id, name: r.name, relationshipType: r.relationshipType, emotionalCloseness: r.emotionalCloseness }))}
+            relationships={contacts.map(c => ({
+              id: c.id,
+              name: c.name,
+              relationshipType: c.relationship_type || 'Other',
+              emotionalCloseness: 5 // Default for now, will be enhanced in Phase 3
+            }))}
             onSelect={(rel) => {
-              const found = relationships.find(r => r.id === rel.id);
-              if (found) setSelectedRelationship(found);
+              const found = contacts.find(c => c.id === rel.id);
+              if (found) setSelectedContact(found);
             }}
           />
         </motion.div>
 
-        {/* Relationship List */}
+        {/* Contact List */}
         <motion.div 
-          className="space-y-4"
+          className="space-y-3"
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.4 }}
         >
-          {relationships.map((relationship, index) => (
+          <h3 className="text-white text-lg font-semibold mb-4">All Contacts</h3>
+          {contacts.map((contact, index) => (
             <motion.div
-              key={relationship.id}
-              className="glass-card p-4 cursor-pointer"
-              initial={{ x: -20, opacity: 0 }}
+              key={contact.id}
+              className="glass-card p-4 cursor-pointer hover:bg-white/10 transition-colors"
+              initial={{ x: -30, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.6 + index * 0.1 }}
-              whileHover={{ scale: 1.02 }}
-              onClick={() => setSelectedRelationship(relationship)}
+              transition={{ delay: 0.5 + index * 0.1 }}
+              onClick={() => setSelectedContact(contact)}
             >
-              <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 bg-gradient-to-br ${getRelationshipColor(relationship.emotionalCloseness)} rounded-full flex items-center justify-center`}>
-                  {getRelationshipIcon(relationship.relationshipType)}
-                </div>
-                
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <h4 className="text-white font-semibold">{relationship.name}</h4>
-                    <span className="text-white/60 text-sm">{relationship.relationshipType}</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-indigo-400 flex items-center justify-center">
+                    {getRelationshipIcon(contact.relationship_type)}
                   </div>
-                  
-                  <div className="flex items-center gap-4 mb-2">
-                    <div className="flex items-center gap-1">
-                      <span className="text-white/60 text-xs">Closeness:</span>
-                      <div className="flex">
-                        {[...Array(10)].map((_, i) => (
-                          <div
-                            key={i}
-                            className={`w-1.5 h-1.5 rounded-full mx-0.5 ${
-                              i < relationship.emotionalCloseness ? 'bg-pink-400' : 'bg-white/20'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    </div>
+                  <div>
+                    <h4 className="text-white font-medium">{contact.name}</h4>
+                    <p className="text-white/60 text-sm">{contact.relationship_type || 'Contact'}</p>
                   </div>
-                  
-                  <p className="text-white/70 text-sm line-clamp-2">
-                    {relationship.context}
-                  </p>
                 </div>
-                
-                <Edit3 className="w-4 h-4 text-white/40" />
+                <Edit3 className="w-5 h-5 text-white/40" />
               </div>
             </motion.div>
           ))}
         </motion.div>
       </div>
 
-      {/* Relationship Detail Modal */}
-      <AnimatePresence>
-        {selectedRelationship && (
-          <motion.div 
-            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setSelectedRelationship(null)}
-          >
-            <motion.div 
-              className="glass-card p-6 max-w-md w-full"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center gap-4 mb-6">
-                <div className={`w-16 h-16 bg-gradient-to-br ${getRelationshipColor(selectedRelationship.emotionalCloseness)} rounded-full flex items-center justify-center`}>
-                  {getRelationshipIcon(selectedRelationship.relationshipType)}
-                </div>
-                <div>
-                  <h3 className="text-white text-xl font-bold">{selectedRelationship.name}</h3>
-                  <p className="text-white/80">{selectedRelationship.relationshipType}</p>
-                </div>
-              </div>
+      {/* Contact Detail Drawer */}
+      <ContactDetailDrawer
+        contact={selectedContact}
+        sliders={selectedSliders}
+        onClose={() => setSelectedContact(null)}
+        onSave={handleSlidersUpdate}
+        onDelete={handleContactChange}
+        onUpdate={handleContactChange}
+      />
 
-              <div className="space-y-4 mb-6">
-                <div>
-                  <label className="text-white/60 text-sm">Emotional Closeness</label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="flex">
-                      {[...Array(10)].map((_, i) => (
-                        <div
-                          key={i}
-                          className={`w-2 h-2 rounded-full mx-0.5 ${
-                            i < selectedRelationship.emotionalCloseness ? 'bg-pink-400' : 'bg-white/20'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <span className="text-white text-sm">{selectedRelationship.emotionalCloseness}/10</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-white/60 text-sm">Context & Notes</label>
-                  <p className="text-white/90 text-sm mt-1 p-3 bg-white/10 rounded-lg">
-                    {selectedRelationship.context}
-                  </p>
-                </div>
-
-                {selectedRelationship.inferredProfile && (
-                  <div>
-                    <label className="text-white/60 text-sm">Communication Style</label>
-                    <div className="mt-2 p-3 bg-white/10 rounded-lg">
-                      <p className="text-white/90 text-sm">
-                        Primary: <span className="text-pink-300 font-semibold capitalize">
-                          {selectedRelationship.inferredProfile.processingLens}
-                        </span>
-                      </p>
-                      <p className="text-white/90 text-sm">
-                        Tone: <span className="text-blue-300 font-semibold capitalize">
-                          {selectedRelationship.inferredProfile.tonePreference}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => {
-                    // Navigate to translator with this person's context
-                    navigate('/translator');
-                  }}
-                  className="glass-button py-3 font-medium"
-                >
-                  Translate For Them
-                </button>
-                <button
-                  onClick={() => setSelectedRelationship(null)}
-                  className="glass-button py-3 font-medium"
-                >
-                  Close
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Add Relationship Form */}
-      <AnimatePresence>
-        {showAddForm && (
-          <motion.div 
-            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div 
-              className="glass-card p-6 max-w-md w-full"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-            >
-              <h3 className="text-white text-xl font-bold mb-6">Add New Relationship</h3>
-              
-              <div className="space-y-4 mb-6">
-                <div>
-                  <label className="text-white/60 text-sm block mb-2">Name</label>
-                  <input
-                    type="text"
-                    placeholder="Enter their name"
-                    className="w-full bg-white/10 text-white placeholder-white/60 border border-white/20 rounded-lg px-3 py-2 outline-none focus:border-white/40"
-                  />
-                </div>
-                
-                <div>
-                  <label className="text-white/60 text-sm block mb-2">Relationship Type</label>
-                  <select className="w-full bg-white/10 text-white border border-white/20 rounded-lg px-3 py-2 outline-none focus:border-white/40">
-                    <option value="">Select type</option>
-                    <option value="Partner">Partner</option>
-                    <option value="Friend">Friend</option>
-                    <option value="Family">Family</option>
-                    <option value="Boss">Boss</option>
-                    <option value="Colleague">Colleague</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-white/60 text-sm block mb-2">Context & Notes</label>
-                  <textarea
-                    placeholder="How do you communicate with them? Any patterns you've noticed?"
-                    className="w-full bg-white/10 text-white placeholder-white/60 border border-white/20 rounded-lg px-3 py-2 outline-none focus:border-white/40 h-20 resize-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => setShowAddForm(false)}
-                  className="glass-button py-3 font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    // Add relationship logic here
-                    setShowAddForm(false);
-                  }}
-                  className="glass-button py-3 font-medium"
-                >
-                  Add
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Add Contact Form Modal */}
+      <AddContactModal 
+        show={showAddForm}
+        onClose={() => setShowAddForm(false)}
+        onAdd={handleAddContact}
+      />
     </motion.div>
   );
 };

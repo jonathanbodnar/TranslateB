@@ -18,6 +18,16 @@ const ProfileIcon: React.FC = () => {
     setShowDropdown(false);
   };
 
+  const handleWimtsClick = () => {
+    navigate('/wimts');
+    setShowDropdown(false);
+  }
+
+  const handleRelationshipClick = () => {
+    navigate('/relationships');
+    setShowDropdown(false);
+  }
+
   const handleLoginClick = () => {
     open();
     setShowDropdown(false);
@@ -60,6 +70,18 @@ const ProfileIcon: React.FC = () => {
                 <div className="px-3 py-2 text-white/80 text-sm border-b border-white/10">
                   {user?.email || 'User'}
                 </div>
+                <button
+                  onClick={handleWimtsClick}
+                  className="w-full text-left px-3 py-2 text-white hover:bg-white/10 rounded text-sm"
+                >
+                  Quick Translator
+                </button>
+                <button
+                  onClick={handleRelationshipClick}
+                  className="w-full text-left px-3 py-2 text-white hover:bg-white/10 rounded text-sm"
+                >
+                  Relationship Web
+                </button>
                 <button
                   onClick={handleProfileClick}
                   className="w-full text-left px-3 py-2 text-white hover:bg-white/10 rounded text-sm"

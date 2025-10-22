@@ -10,6 +10,7 @@ import { ProfileSnapshot } from '../features/profile/types';
 import { CognitiveMap } from '../features/profile/components/CognitiveMap';
 import { FearMap } from '../features/profile/components/FearMap';
 import { InsightsFeed } from '../features/profile/components/InsightsFeed';
+import { apiFetch } from '../api/http';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -21,28 +22,58 @@ const ProfilePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const hasLoadedRef = useRef(false);
+  
+  // Stats state
+  const [stats, setStats] = useState({
+    reflection_count: 0,
+    quiz_count: 0,
+    contact_count: 0,
+    wimts_count: 0,
+    insight_count: 0,
+    member_since: null as string | null
+  });
+  
+  // Weekly insights state
+  const [weeklyInsights, setWeeklyInsights] = useState<{
+    summary: string;
+    top_themes: string[];
+    mirror_moments: number;
+    insights: Array<{
+      title: string;
+      content: string;
+      category: string;
+    }>;
+  } | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
 
   const loadProfile = async () => {
     if (!user?.id) return;
     
     try {
       setError(null);
-      const data = await getProfile(user.id);
-      setProfile(data);
+      
+      // Load profile data and stats in parallel
+      const [profileData, statsData] = await Promise.all([
+        getProfile(user.id),
+        apiFetch<typeof stats>(`/api/profile/${user.id}/stats`)
+      ]);
+      
+      setProfile(profileData);
+      setStats(statsData);
       
       // Update tb_profile with latest cognitive data from API
-      const profileData = {
-        lead: data.cognitive_snapshot.dominant_streams[0] || 'Feeling',
-        next: data.cognitive_snapshot.dominant_streams[1] || 'Intuition',
+      const localProfile = {
+        lead: profileData.cognitive_snapshot.dominant_streams[0] || 'Feeling',
+        next: profileData.cognitive_snapshot.dominant_streams[1] || 'Intuition',
         mode: 'Inward-led',
-        processing_tendencies: data.cognitive_snapshot.processing_tendencies,
-        blind_spots: data.cognitive_snapshot.blind_spots,
-        trigger_probability_index: data.cognitive_snapshot.trigger_probability_index,
-        communication_lens: data.cognitive_snapshot.communication_lens
+        processing_tendencies: profileData.cognitive_snapshot.processing_tendencies,
+        blind_spots: profileData.cognitive_snapshot.blind_spots,
+        trigger_probability_index: profileData.cognitive_snapshot.trigger_probability_index,
+        communication_lens: profileData.cognitive_snapshot.communication_lens
       };
       
       localStorage.setItem('tb_profile', JSON.stringify({
-        profile: profileData,
+        profile: localProfile,
         timestamp: new Date().toISOString()
       }));
     } catch (err) {
@@ -54,9 +85,24 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  const loadWeeklyInsights = async () => {
+    if (!user?.id) return;
+    
+    setInsightsLoading(true);
+    try {
+      const insights = await apiFetch<typeof weeklyInsights>('/api/insights/weekly');
+      setWeeklyInsights(insights);
+    } catch (error) {
+      console.error('Failed to load weekly insights:', error);
+      // Don't set error state - insights are optional
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
+
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadProfile();
+    await Promise.all([loadProfile(), loadWeeklyInsights()]);
   };
 
   useEffect(() => {
@@ -76,8 +122,9 @@ const ProfilePage: React.FC = () => {
     // Track analytics
     track(ANALYTICS_EVENTS.PROFILE_VIEWED);
     
-    // Load profile for authenticated user
+    // Load profile and weekly insights for authenticated user
     loadProfile();
+    loadWeeklyInsights();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, authLoading]);
 
@@ -159,6 +206,116 @@ const ProfilePage: React.FC = () => {
       </motion.div>
 
       <div className="px-4 pb-8">
+        {/* Stats Cards */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="grid grid-cols-3 gap-3 mb-6"
+        >
+          <div className="glass-card p-4 text-center">
+            <div className="text-3xl font-bold text-white">
+              {stats.reflection_count}
+            </div>
+            <div className="text-xs text-white/60 mt-1">Reflections</div>
+          </div>
+          <div className="glass-card p-4 text-center">
+            <div className="text-3xl font-bold text-white">
+              {stats.quiz_count}
+            </div>
+            <div className="text-xs text-white/60 mt-1">Quizzes</div>
+          </div>
+          <div className="glass-card p-4 text-center">
+            <div className="text-3xl font-bold text-white">
+              {stats.contact_count}
+            </div>
+            <div className="text-xs text-white/60 mt-1">Contacts</div>
+          </div>
+        </motion.div>
+        
+        {/* Weekly Insights */}
+        {insightsLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="glass-card p-6 mb-6 text-center"
+          >
+            <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-white/70 mb-2"></div>
+            <p className="text-white/70 text-sm">Generating this week's insights...</p>
+          </motion.div>
+        )}
+        
+        {!insightsLoading && weeklyInsights && weeklyInsights.summary && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="glass-card p-6 mb-6"
+          >
+            <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+              <span>📊</span>
+              This Week's Insights
+            </h2>
+            
+            <p className="text-white/80 mb-4 leading-relaxed">
+              {weeklyInsights.summary}
+            </p>
+            
+            {weeklyInsights.top_themes && weeklyInsights.top_themes.length > 0 && (
+              <div className="mb-4">
+                <div className="text-sm text-white/60 mb-2">Top Themes:</div>
+                <div className="flex flex-wrap gap-2">
+                  {weeklyInsights.top_themes.map((theme, idx) => (
+                    <span
+                      key={idx}
+                      className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-sm"
+                    >
+                      {theme}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {weeklyInsights.mirror_moments > 0 && (
+              <div className="flex items-center gap-2 text-sm text-white/70">
+                <span className="text-2xl">✨</span>
+                <span>
+                  {weeklyInsights.mirror_moments} mirror moment{weeklyInsights.mirror_moments !== 1 ? 's' : ''} this week
+                </span>
+              </div>
+            )}
+            
+            {weeklyInsights.insights && weeklyInsights.insights.length > 0 && (
+              <div className="mt-4 space-y-3">
+                <div className="text-sm text-white/60 mb-2">Key Insights:</div>
+                {weeklyInsights.insights.map((insight, idx) => (
+                  <div
+                    key={idx}
+                    className="bg-white/5 rounded-lg p-3 border border-white/10"
+                  >
+                    <div className="flex items-start gap-2">
+                      <span className="text-lg">
+                        {insight.category === 'breakthrough' ? '🌟' : 
+                         insight.category === 'strength' ? '💪' :
+                         insight.category === 'blind_spot' ? '👁️' : '🔄'}
+                      </span>
+                      <div className="flex-1">
+                        <div className="font-medium text-white text-sm mb-1">
+                          {insight.title}
+                        </div>
+                        <div className="text-white/70 text-xs">
+                          {insight.content}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+        
         {/* AI-Generated Components */}
         <CognitiveMap data={profile.cognitive_snapshot} />
         <FearMap data={profile.fear_snapshot} />

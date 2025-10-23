@@ -27,15 +27,15 @@ const RelationshipWeb: React.FC = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const fetchingRef = useRef(false);
+  const hasFetchedRef = useRef(false);
 
-  // Fetch contacts on mount (with proper deduplication)
+  // Fetch contacts on mount (only once)
   useEffect(() => {
     if (!user) return;
     
-    // Prevent duplicate calls in StrictMode
-    if (fetchingRef.current) return;
-    fetchingRef.current = true;
+    // Only fetch once per session
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
     
     async function fetchContacts() {
       try {
@@ -52,11 +52,6 @@ const RelationshipWeb: React.FC = () => {
     }
 
     fetchContacts();
-    
-    // Cleanup to allow refetch if component remounts
-    return () => {
-      fetchingRef.current = false;
-    };
   }, [user]);
 
   // Fetch sliders when contact is selected
@@ -303,7 +298,7 @@ const RelationshipWeb: React.FC = () => {
       <div className="px-4 pb-8">
         {/* Constellation Visualization */}
         <motion.div 
-          className="glass-card p-6 mb-6 h-80"
+          className="glass-card h-full  p-6 mb-6 h-80"
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.3 }}

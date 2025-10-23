@@ -10,6 +10,7 @@ type AuthGateContextValue = {
   isUserLoggedIn: boolean;
   user: any;
   loading: boolean;
+  isAdmin: boolean;
 };
 
 const AuthGateContext = createContext<AuthGateContextValue | undefined>(undefined);
@@ -60,14 +61,21 @@ export const AuthGateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => subscription.unsubscribe();
   }, [handleAuthStateChange]);
 
-  const value = useMemo<AuthGateContextValue>(() => ({
-    isOpen,
-    open: () => setIsOpen(true),
-    close: () => setIsOpen(false),
-    isUserLoggedIn,
-    user,
-    loading
-  }), [isOpen, isUserLoggedIn, user, loading]);
+  const value = useMemo<AuthGateContextValue>(() => {
+    // Check if user is admin
+    const isAdmin = user?.user_metadata?.role === 'admin' || 
+                    (user as any)?.raw_user_meta_data?.role === 'admin';
+    
+    return {
+      isOpen,
+      open: () => setIsOpen(true),
+      close: () => setIsOpen(false),
+      isUserLoggedIn,
+      user,
+      loading,
+      isAdmin
+    };
+  }, [isOpen, isUserLoggedIn, user, loading]);
 
   return (
     <AuthGateContext.Provider value={value}>

@@ -42,7 +42,20 @@ export const ANALYTICS_EVENTS = {
   RELATIONAL_LAYOUT_APPLIED: 'relational.layout_applied',
   
   // Admin
-  ADMIN_CONFIG_UPDATED: 'admin.config.updated'
+  ADMIN: {
+    DASHBOARD_VIEWED: 'admin.dashboard.viewed',
+    CONFIG_EDITOR_OPENED: 'admin.config.editor_opened',
+    CONFIG_UPDATED: 'admin.config.updated',
+    CONFIG_VALIDATION_FAILED: 'admin.config.validation_failed',
+    QUIZ_MANAGER_OPENED: 'admin.quiz.manager_opened',
+    QUESTION_CREATED: 'admin.quiz.question_created',
+    QUESTION_UPDATED: 'admin.quiz.question_updated',
+    QUESTION_DELETED: 'admin.quiz.question_deleted',
+    QUESTION_TOGGLED: 'admin.quiz.question_toggled',
+  }
 } as const;
 
-export type AnalyticsEventName = typeof ANALYTICS_EVENTS[keyof typeof ANALYTICS_EVENTS];
+// Type that includes both flat and nested event names
+type FlatEvents = typeof ANALYTICS_EVENTS[Exclude<keyof typeof ANALYTICS_EVENTS, 'ADMIN'>];
+type AdminEvents = typeof ANALYTICS_EVENTS['ADMIN'][keyof typeof ANALYTICS_EVENTS['ADMIN']];
+export type AnalyticsEventName = FlatEvents | AdminEvents;

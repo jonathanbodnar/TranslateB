@@ -1,0 +1,402 @@
+openapi: 3.0.3
+info:
+  title: TranslateB MVP API
+  version: 1.0.0
+servers:
+  - url: https://api.translateb.example
+paths:
+  /api/intake/session.start:
+    post:
+      summary: Start intake session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntakeStartRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntakeStartResponse'
+  /api/intake/questions:
+    get:
+      summary: Get intake questions
+      parameters:
+        - in: query
+          name: session_id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntakeQuestionsResponse'
+  /api/intake/answer:
+    post:
+      summary: Submit intake answer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntakeAnswerRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+  /api/intake/complete:
+    post:
+      summary: Complete intake
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntakeCompleteRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSeed'
+  /api/wimts/generate:
+    post:
+      summary: Generate WIMTS options
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WimtsGenerateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WimtsGenerateResponse'
+  /api/wimts/select:
+    post:
+      summary: Select WIMTS option
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WimtsSelectRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WimtsSelectResponse'
+  /api/translate/generate:
+    post:
+      summary: Generate translations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TranslateGenerateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslateGenerateResponse'
+  /api/reflections:
+    post:
+      summary: Save reflection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReflectionCreateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReflectionCreateResponse'
+  /api/profile/{userId}:
+    get:
+      summary: Get profile snapshot
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSnapshot'
+  /api/contacts:
+    post:
+      summary: Create contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                role: { type: string }
+                relationship_type: { type: string }
+      responses:
+        '200': { description: OK }
+    get:
+      summary: List contacts
+      responses:
+        '200': { description: OK }
+  /api/contacts/{id}:
+    get:
+      summary: Get contact by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+  /api/contacts/{id}/sliders:
+    post:
+      summary: Update sliders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                directness: { type: integer }
+                formality: { type: integer }
+                warmth: { type: integer }
+                support: { type: integer }
+                humor: { type: integer }
+                teasing: { type: integer }
+      responses:
+        '200': { description: OK }
+  /api/insights/like:
+    post:
+      summary: Like an insight
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [insight_id]
+              properties:
+                insight_id: { type: string }
+      responses:
+        '200': { description: OK }
+  /api/insights/weekly:
+    get:
+      summary: Weekly summary
+      responses:
+        '200': { description: OK }
+  /api/share/card:
+    post:
+      summary: Render share card
+      responses:
+        '200': { description: OK }
+  /api/shortlink:
+    post:
+      summary: Create shortlink
+      responses:
+        '200': { description: OK }
+  /api/public/wall:
+    get:
+      summary: List anonymized public insights
+      responses:
+        '200': { description: OK }
+  /api/pair/invite:
+    post:
+      summary: Send pair reflection invite
+      responses:
+        '200': { description: OK }
+  /api/pair/complete:
+    post:
+      summary: Complete pair reflection
+      responses:
+        '200': { description: OK }
+  /api/admin/config:
+    get:
+      summary: Get admin config
+      responses:
+        '200': { description: OK }
+    put:
+      summary: Save draft admin config
+      responses:
+        '200': { description: OK }
+  /api/admin/config/publish:
+    post:
+      summary: Publish draft
+      responses:
+        '200': { description: OK }
+  /api/admin/versions:
+    get:
+      summary: List config versions
+      responses:
+        '200': { description: OK }
+  /api/admin/versions/{config_id}:
+    get:
+      summary: Get config version by id
+      parameters:
+        - in: path
+          name: config_id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+  /api/admin/moderation/decision:
+    post:
+      summary: Moderation decision
+      responses:
+        '200': { description: OK }
+components:
+  schemas:
+    OkResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+    IntakeStartRequest:
+      type: object
+      required: [story_text, mode]
+      properties:
+        story_text: { type: string }
+        mode: { type: string, enum: [quick, full] }
+    IntakeStartResponse:
+      type: object
+      properties:
+        session_id: { type: string }
+        next: { type: string }
+    IntakeQuestionsResponse:
+      type: object
+      properties:
+        questions:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              headline: { type: string }
+              left: { type: object }
+              right: { type: object }
+              helper_text: { type: string }
+    IntakeAnswerRequest:
+      type: object
+      required: [session_id, question_id, choice, intensity]
+      properties:
+        session_id: { type: string }
+        question_id: { type: string }
+        choice: { type: string, enum: [left, right, neither] }
+        intensity: { type: integer, minimum: 0, maximum: 2 }
+    IntakeCompleteRequest:
+      type: object
+      required: [session_id]
+      properties:
+        session_id: { type: string }
+    ProfileSeed:
+      type: object
+      properties:
+        profile:
+          type: object
+          properties:
+            lead: { type: string }
+            next: { type: string }
+            mode: { type: string }
+            frictions_top:
+              type: array
+              items: { type: string }
+            fears:
+              type: object
+              additionalProperties: { type: number }
+    WimtsGenerateRequest:
+      type: object
+      required: [session_id, intake_text, profile]
+      properties:
+        session_id: { type: string }
+        intake_text: { type: string }
+        profile: { $ref: '#/components/schemas/ProfileSeed/properties/profile' }
+    WimtsGenerateResponse:
+      type: object
+      properties:
+        what_i_meant_variants:
+          type: array
+          items:
+            type: object
+            properties:
+              option_id: { type: string }
+              title: { type: string }
+              body: { type: string }
+              tags:
+                type: array
+                items: { type: string }
+    WimtsSelectRequest:
+      type: object
+      required: [session_id, option_id]
+      properties:
+        session_id: { type: string }
+        option_id: { type: string }
+    WimtsSelectResponse:
+      type: object
+      properties:
+        chosen_option_id: { type: string }
+    TranslateGenerateRequest:
+      type: object
+      required: [base_text, mode]
+      properties:
+        base_text: { type: string }
+        mode: { type: string, enum: ['4','8'] }
+        persona_hints: { type: object }
+        frictions_top:
+          type: array
+          items: { type: string }
+    TranslateGenerateResponse:
+      type: object
+      properties:
+        mode: { type: string }
+        translations: { type: object }
+    ReflectionCreateRequest:
+      type: object
+      required: [base_intake_text, wimts_option_id, translation_mode, chosen_translation_key, translation_text]
+      properties:
+        base_intake_text: { type: string }
+        wimts_option_id: { type: string }
+        translation_mode: { type: string, enum: ['4','8'] }
+        chosen_translation_key: { type: string }
+        translation_text: { type: string }
+        recipient_id: { type: string }
+    ReflectionCreateResponse:
+      type: object
+      properties:
+        reflection_id: { type: string }
+    ProfileSnapshot:
+      type: object
+      properties:
+        user_id: { type: string }
+        cognitive_snapshot: { type: object }
+        fear_snapshot: { type: object }
+        insights_snapshot: { type: object }
+        metadata: { type: object }
+

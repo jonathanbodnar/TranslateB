@@ -106,4 +106,43 @@ create index if not exists idx_contacts_user on public.contacts(user_id);
 create index if not exists idx_insights_user on public.insights(user_id);
 create index if not exists idx_admin_configs_status on public.admin_configs(status);
 
+-- pgvector for semantic similarity
+create extension if not exists "vector";
+create extension if not exists pgcrypto;
+
+-- Embeddings for reflections
+create table if not exists public.reflection_embeddings (
+  id uuid primary key default gen_random_uuid(),
+  reflection_id uuid unique references public.reflections(id) on delete cascade,
+  embedding vector(1536) not null,
+  created_at timestamptz default now()
+);
+
+-- Upsert helper
+create or replace function public.upsert_reflection_embedding(reflection_id uuid, embedding vector(1536))
+returns void
+language plpgsql
+as $$
+begin
+  insert into public.reflection_embeddings(reflection_id, embedding)
+  values (upsert_reflection_embedding.reflection_id, upsert_reflection_embedding.embedding)
+  on conflict (reflection_id) do update set embedding = excluded.embedding, created_at = now();
+end;
+$$;
+
+-- Similarity helper: find nearest neighbors to a reflection's vector
+create or replace function public.similar_reflections(p_reflection_id uuid, match_limit int default 5)
+returns table (reflection_id uuid, distance double precision)
+language sql
+as $$
+  with base as (
+    select embedding from public.reflection_embeddings where reflection_id = p_reflection_id
+  )
+  select re.reflection_id, (re.embedding <=> base.embedding) as distance
+  from public.reflection_embeddings re, base
+  where re.reflection_id <> p_reflection_id
+  order by re.embedding <=> base.embedding
+  limit match_limit;
+$$;
+
 

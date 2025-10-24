@@ -500,16 +500,38 @@ const WIMTSPage: React.FC = () => {
                   </button>
                 )}
 
-                {/* Cards */}
+                {/* Cards with Drag/Swipe */}
                 <div className="relative w-full max-w-md">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={currentCardIndex}
-                      initial={{ opacity: 0, scale: 0.8, rotateY: -20 }}
-                      animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-                      exit={{ opacity: 0, scale: 0.8, rotateY: 20 }}
-                      transition={{ duration: 0.3 }}
-                      className="w-full"
+                      initial={{ opacity: 0, x: 100 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -100 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                      drag="x"
+                      dragConstraints={{ left: 0, right: 0 }}
+                      dragElastic={0.7}
+                      onDragEnd={(e, { offset, velocity }) => {
+                        // Responsive thresholds - easier on desktop
+                        const offsetThreshold = window.innerWidth > 768 ? 80 : 50;
+                        const velocityThreshold = window.innerWidth > 768 ? 300 : 500;
+                        
+                        const absOffset = Math.abs(offset.x);
+                        const absVelocity = Math.abs(velocity.x);
+                        
+                        // Swipe left (next card) - check offset OR velocity
+                        if ((offset.x < 0 && (absOffset > offsetThreshold || absVelocity > velocityThreshold)) && 
+                            currentCardIndex < translationKeys.length - 1) {
+                          setCurrentCardIndex(currentCardIndex + 1);
+                        }
+                        // Swipe right (previous card) - check offset OR velocity
+                        else if ((offset.x > 0 && (absOffset > offsetThreshold || absVelocity > velocityThreshold)) && 
+                                 currentCardIndex > 0) {
+                          setCurrentCardIndex(currentCardIndex - 1);
+                        }
+                      }}
+                      className="w-full cursor-grab active:cursor-grabbing"
                     >
                       <div className="glass-card p-6 rounded-2xl border-2 border-white/20 shadow-2xl">
                         {/* Card Header */}

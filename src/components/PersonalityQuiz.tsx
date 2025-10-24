@@ -52,26 +52,39 @@ const PersonalityQuiz: React.FC = () => {
 
   const currentQuestion = questions[currentQuestionIndex];
 
+  const [exitX, setExitX] = useState(0);
+  const [exitY, setExitY] = useState(0);
+
   const handleSwipe = (info: PanInfo) => {
     if (!currentQuestion) return;
-    const threshold = 80;
+    
+    // Responsive thresholds - easier on desktop
+    const velocityThreshold = 50;
+    const offsetThresholdX = window.innerWidth > 768 ? 150 : 100; // Shorter distance on desktop
+    const offsetThresholdY = window.innerWidth > 768 ? 120 : 100;
+    
     const velocityX = info.velocity.x;
     const velocityY = info.velocity.y;
     const offsetX = info.offset.x;
+    const offsetY = info.offset.y;
     
     // Determine swipe direction based on velocity and offset
     let selectedAnswer: any = null;
 
-    // Check for strong horizontal swipes first
-    if (Math.abs(velocityX) > threshold && Math.abs(velocityX) > Math.abs(velocityY)) {
-      if (velocityX > 0) {
+    // Check for strong horizontal swipes first (easier threshold)
+    if (Math.abs(offsetX) > offsetThresholdX || Math.abs(velocityX) > velocityThreshold) {
+      if (offsetX > 0 || velocityX > 0) {
         selectedAnswer = currentQuestion.answers.find(a => a.direction === 'right');
+        setExitX(1000); // Exit to right
+        setExitY(0);
       } else {
         selectedAnswer = currentQuestion.answers.find(a => a.direction === 'left');
+        setExitX(-1000); // Exit to left
+        setExitY(0);
       }
     }
-    // Check for upward swipes
-    else if (velocityY < -threshold) {
+    // Check for upward swipes (easier threshold)
+    else if (offsetY < -offsetThresholdY || velocityY < -velocityThreshold) {
       // Get all up direction answers and cycle through them based on swipe angle
       const upAnswers = currentQuestion.answers.filter(a => a.direction === 'up');
       if (upAnswers.length > 0) {
@@ -79,10 +92,16 @@ const PersonalityQuiz: React.FC = () => {
         let answerIndex = 0;
         if (offsetX < -50 && upAnswers.length > 1) {
           answerIndex = 1; // up-left neutral disagree
+          setExitX(-500);
+          setExitY(-1000);
         } else if (offsetX > 50 && upAnswers.length > 2) {
           answerIndex = 2; // up-right neutral agree
+          setExitX(500);
+          setExitY(-1000);
         } else {
           answerIndex = 0; // straight up neutral
+          setExitX(0);
+          setExitY(-1000);
         }
         
         selectedAnswer = upAnswers[answerIndex] || upAnswers[0];
@@ -103,11 +122,15 @@ const PersonalityQuiz: React.FC = () => {
       answer(session_id, currentQuestion.id, choice as any, selectedAnswer.direction === 'up' ? 1 : 2).catch(() => {});
 
       // Move to next question or complete quiz
-      if (currentQuestionIndex < questions.length - 1) {
-        setCurrentQuestionIndex(prev => prev + 1);
-      } else {
-        completeQuiz([...answers, newAnswer]);
-      }
+      setTimeout(() => {
+        if (currentQuestionIndex < questions.length - 1) {
+          setCurrentQuestionIndex(prev => prev + 1);
+          setExitX(0);
+          setExitY(0);
+        } else {
+          completeQuiz([...answers, newAnswer]);
+        }
+      }, 300); // Delay to show swipe animation
     }
   };
 
@@ -364,22 +387,59 @@ const PersonalityQuiz: React.FC = () => {
             <div className="h-8 mb-8" />
           )}
 
-          {/* Swipeable Answer Cards */}
-          <div className="relative h-80 mb-8" ref={constraintsRef}>
+          {/* Swipeable Answer Cards - Dating App Style Stack */}
+          <div className="relative h-80 mb-8">
+            {/* Show next 2 cards in background */}
+            {questions.slice(currentQuestionIndex + 1, currentQuestionIndex + 3).map((q, idx) => (
+              <motion.div
+                key={q.id}
+                className="absolute inset-0 swipe-card glass-card p-6 flex items-center justify-center"
+                initial={{ scale: 1 - (idx + 1) * 0.05, y: (idx + 1) * 10, opacity: 0.5 }}
+                animate={{ scale: 1 - (idx + 1) * 0.05, y: (idx + 1) * 10, opacity: 0.5 }}
+                style={{ 
+                  zIndex: 10 - (idx + 1),
+                  filter: `brightness(${1 - (idx + 1) * 0.2})`
+                }}
+              >
+                <div className="text-center">
+                  <p className="text-white text-lg font-medium mb-4">
+                    {q.text}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+
+            {/* Current card on top */}
             {currentQuestion ? (
               <motion.div
-                className="swipe-card glass-card p-6 flex items-center justify-center"
+                key={currentQuestion.id}
+                className="absolute inset-0 swipe-card glass-card p-6 flex items-center justify-center cursor-grab active:cursor-grabbing"
                 drag
-                dragConstraints={constraintsRef}
+                dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+                dragElastic={0.7}
                 onDragEnd={(_, info) => handleSwipe(info)}
-                whileDrag={{ scale: 1.05, rotate: 2 }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                initial={{ scale: 1, rotate: 0 }}
+                animate={exitX !== 0 || exitY !== 0 ? { 
+                  x: exitX, 
+                  y: exitY, 
+                  opacity: 0,
+                  rotate: exitX > 0 ? 20 : exitX < 0 ? -20 : 0,
+                  transition: { duration: 0.3 }
+                } : { 
+                  x: 0, 
+                  y: 0, 
+                  scale: 1, 
+                  rotate: 0,
+                  opacity: 1 
+                }}
+                whileDrag={{ scale: 1.05, cursor: 'grabbing' }}
+                style={{ zIndex: 20 }}
               >
                 <div className="text-center">
                   <p className="text-white text-lg font-medium mb-4">
                     {currentQuestion.text}
                   </p>
-                  <div className="text-white/60 text-sm">
+                  <div className="text-white/60 text-sm space-y-1">
                     <p>← {currentQuestion.answers.find(a => a.direction === 'left')?.text.substring(0, 30)}...</p>
                     <p>→ {currentQuestion.answers.find(a => a.direction === 'right')?.text.substring(0, 30)}...</p>
                     <p>↑ Neutral options available</p>
